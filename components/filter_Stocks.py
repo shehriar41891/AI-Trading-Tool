@@ -20,7 +20,6 @@ client = RESTClient(POLYGON_API_KEY)
 # Static list of NASDAQ 100 stocks (add the full list)
 nasdaq_100_stocks = [
     "AAPL", "MSFT"
-    # Add all 100 NASDAQ 100 stocks here
 ]
 
 # 1. Fetch Stock Data and Calculate Metrics using Polygon API
@@ -34,14 +33,13 @@ def calculate_metrics(stock):
             for a in client.list_aggs(
                 ticker=stock,
                 multiplier=1,
-                timespan="hour",  # Hourly data
-                from_="2024-01-12",  # Start date
-                to="2024-01-13",  # End date
+                timespan="hour",  
+                from_="2024-01-12",  
+                to="2024-01-13", 
                 limit=50000
             ):
                 aggs.append(a)
 
-            # Extract relevant data and create a DataFrame
             data = []
             for agg in aggs:
                 data.append({
@@ -49,8 +47,9 @@ def calculate_metrics(stock):
                     'close': agg.close,
                     'volume': agg.volume
                 })
+                
+            print('The data we get is ',data)
 
-            # Convert the aggregated data into a DataFrame
             stock_data = pd.DataFrame(data)
 
             # Calculate the percentage change between the first and last closing price
