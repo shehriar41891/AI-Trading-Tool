@@ -4,3 +4,5 @@ numpy
 polygon-api-client
 python-dotenv
 langchain_openai
+plotly
+dash
