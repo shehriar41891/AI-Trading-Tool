@@ -33,8 +33,8 @@ def calculate_metrics(stock):
             aggs = []
             for a in client.list_aggs(
                 ticker=stock,
-                multiplier=1,
-                timespan="hour",  
+                multiplier=5,
+                timespan="minute",  
                 from_="2025-01-23",  
                 to="2025-01-24", 
                 limit=50000

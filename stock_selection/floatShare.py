@@ -23,6 +23,7 @@ def get_weighted_shares_polygon(ticker):
         if hasattr(ticker_details, 'weighted_shares_outstanding'):
             weighted_shares = ticker_details.weighted_shares_outstanding
             print(f"Weighted shares outstanding for {ticker}: {weighted_shares}")
+            return weighted_shares
         else:
             print(f"Weighted shares outstanding data is not available for {ticker}.")
             

@@ -1,17 +1,12 @@
 from polygon import RESTClient
-import json
-from typing import cast
-from urllib3 import HTTPResponse
 import pandas as pd
-import numpy as np
-from dotenv import load_dotenv
 import os
-import time
 from time import sleep
 import plotly.graph_objects as go
 import dash
 from dash import dcc, html
 from dash.dependencies import Input, Output
+from dotenv import load_dotenv
 
 # Load API key from environment variables
 load_dotenv()
@@ -21,114 +16,139 @@ POLYGON_API_KEY = os.getenv('POLYGON_API_KEY')
 client = RESTClient(POLYGON_API_KEY)
 
 # List of NASDAQ 100 stocks
-nasdaq_100_stocks = [
-    "AMZN"  # Example stock, you can add more
-]
+nasdaq_100_stocks = ["AAPL"]  # Example stock, add more if needed
 
-# Function to fetch stock data
 def get_stocks(stock):
-    retries = 5  # Maximum retry attempts
-    delay = 5  # Initial delay (in seconds) between retries
+    retries = 5
+    delay = 5
     for attempt in range(retries):
         try:
-            # Fetch data using the `list_aggs` method for hourly aggregation
             aggs = []
             for a in client.list_aggs(
                 ticker=stock,
-                multiplier=1,
-                timespan="hour",
+                multiplier=5,
+                timespan="minute",
                 from_="2025-01-24",
                 to="2025-01-24",
                 limit=50000
             ):
                 aggs.append(a)
 
-            data = []
-            for agg in aggs:
-                data.append({
-                    'timestamp': pd.to_datetime(agg.timestamp, unit='ms'),
-                    'open': agg.open,
-                    'high': agg.high,
-                    'low': agg.low,
-                    'close': agg.close,
-                    'volume': agg.volume
-                })
+            data = [{
+                'timestamp': pd.to_datetime(agg.timestamp, unit='ms'),
+                'open': agg.open,
+                'high': agg.high,
+                'low': agg.low,
+                'close': agg.close,
+                'volume': agg.volume
+            } for agg in aggs]
 
             stock_data = pd.DataFrame(data)
+
+            # **Calculate Technical Indicators**
+            stock_data['SMA_10'] = stock_data['close'].rolling(window=10).mean()
+            stock_data['EMA_10'] = stock_data['close'].ewm(span=10, adjust=False).mean()
+            stock_data['SMA_20'] = stock_data['close'].rolling(window=20).mean()
+            stock_data['STD_20'] = stock_data['close'].rolling(window=20).std()
+            stock_data['Upper_BB'] = stock_data['SMA_20'] + (2 * stock_data['STD_20'])
+            stock_data['Lower_BB'] = stock_data['SMA_20'] - (2 * stock_data['STD_20'])
+
+            delta = stock_data['close'].diff()
+            gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+            loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+            rs = gain / loss
+            stock_data['RSI'] = 100 - (100 / (1 + rs))
+
+            short_ema = stock_data['close'].ewm(span=12, adjust=False).mean()
+            long_ema = stock_data['close'].ewm(span=26, adjust=False).mean()
+            stock_data['MACD'] = short_ema - long_ema
+            stock_data['MACD_Signal'] = stock_data['MACD'].ewm(span=9, adjust=False).mean()
+
             return stock_data
+
         except Exception as e:
             if '429' in str(e):
                 print(f"Rate-limiting error for {stock}. Retrying in {delay} seconds...")
                 sleep(delay)
-                delay *= 2  # Exponential backoff
-                continue  # Retry the request
+                delay *= 2
+                continue
             else:
                 print(f"Error fetching data for {stock}: {e}")
-                return pd.DataFrame()  # Return an empty DataFrame in case of other errors
-    return pd.DataFrame()  # Return an empty DataFrame if retries fail
+                return pd.DataFrame()
+    return pd.DataFrame()
 
-# Function to plot candlestick chart with a moving average
+
 def plot_candlestick_with_indicators(stock_data, stock_name):
     if stock_data.empty:
         print(f"No data available for {stock_name}.")
-        return None
+        return None, None, None
 
-    # Calculate a 10-period moving average
-    stock_data['SMA_10'] = stock_data['close'].rolling(window=10).mean()
+    fig = go.Figure()
 
-    # Create a candlestick chart
-    fig = go.Figure(data=[go.Candlestick(
+    fig.add_trace(go.Candlestick(
         x=stock_data['timestamp'],
         open=stock_data['open'],
         high=stock_data['high'],
         low=stock_data['low'],
         close=stock_data['close'],
         name='Candlestick'
-    )])
-
-    # Add a moving average line to the chart
-    fig.add_trace(go.Scatter(
-        x=stock_data['timestamp'],
-        y=stock_data['SMA_10'],
-        mode='lines',
-        name='10-Period SMA',
-        line=dict(color='orange', width=2)
     ))
 
-    # Customize the layout
-    fig.update_layout(
-        title=f'Candlestick Chart with Indicators for {stock_name}',
-        xaxis_title='Time',
-        yaxis_title='Price',
-        xaxis_rangeslider_visible=False,
-        template='plotly_dark'
+    fig.add_trace(go.Scatter(x=stock_data['timestamp'], y=stock_data['SMA_10'],
+                             mode='lines', name='10-Period SMA', line=dict(color='orange', width=2)))
+    fig.add_trace(go.Scatter(x=stock_data['timestamp'], y=stock_data['EMA_10'],
+                             mode='lines', name='10-Period EMA', line=dict(color='blue', width=1.5)))
+    fig.add_trace(go.Scatter(x=stock_data['timestamp'], y=stock_data['Upper_BB'],
+                             mode='lines', name='Upper Bollinger Band', line=dict(color='purple', width=1, dash='dot')))
+    fig.add_trace(go.Scatter(x=stock_data['timestamp'], y=stock_data['Lower_BB'],
+                             mode='lines', name='Lower Bollinger Band', line=dict(color='purple', width=1, dash='dot')))
+
+    macd_fig = go.Figure()
+    macd_fig.add_trace(go.Scatter(x=stock_data['timestamp'], y=stock_data['MACD'],
+                                  mode='lines', name='MACD', line=dict(color='cyan', width=1.5)))
+    macd_fig.add_trace(go.Scatter(x=stock_data['timestamp'], y=stock_data['MACD_Signal'],
+                                  mode='lines', name='MACD Signal', line=dict(color='red', width=1.5)))
+
+    rsi_fig = go.Figure()
+    rsi_fig.add_trace(go.Scatter(x=stock_data['timestamp'], y=stock_data['RSI'],
+                                 mode='lines', name='RSI', line=dict(color='yellow', width=1.5)))
+    rsi_fig.update_layout(title="RSI (14-Period)", yaxis=dict(title="RSI Value", range=[0, 100], showgrid=True),
+                          xaxis=dict(title="Time"), template="plotly_dark")
+
+    fig.update_layout(title=f'Candlestick Chart with Indicators for {stock_name}', xaxis_title='Time',
+                      yaxis_title='Price', xaxis_rangeslider_visible=False, template='plotly_dark')
+
+    return fig, macd_fig, rsi_fig
+
+
+def run_dashboard():
+    app = dash.Dash(__name__)
+
+    app.layout = html.Div([
+        html.H1("NASDAQ 100 Stock Candlestick Charts with Indicators"),
+        dcc.Dropdown(
+            id="stock-dropdown",
+            options=[{"label": stock, "value": stock} for stock in nasdaq_100_stocks],
+            value=nasdaq_100_stocks[0]
+        ),
+        dcc.Graph(id="stock-candlestick"),
+        dcc.Graph(id="macd-chart"),
+        dcc.Graph(id="rsi-chart")
+    ])
+
+    @app.callback(
+        [Output("stock-candlestick", "figure"),
+         Output("macd-chart", "figure"),
+         Output("rsi-chart", "figure")],
+        [Input("stock-dropdown", "value")]
     )
+    def update_graph(stock):
+        stock_data = get_stocks(stock)
+        candlestick_fig, macd_fig, rsi_fig = plot_candlestick_with_indicators(stock_data, stock)
+        return candlestick_fig, macd_fig, rsi_fig
 
-    return fig
+    app.run_server(debug=True)
 
-# Initialize Dash app
-app = dash.Dash(__name__)
 
-# Define layout of the Dash app
-app.layout = html.Div([
-    html.H1("NASDAQ 100 Stock Candlestick Charts with Indicators"),
-    dcc.Dropdown(
-        id="stock-dropdown",
-        options=[{"label": stock, "value": stock} for stock in nasdaq_100_stocks],
-        value=nasdaq_100_stocks[0]
-    ),
-    dcc.Graph(id="stock-candlestick")
-])
-
-# Define the callback to update the graph
-@app.callback(
-    Output("stock-candlestick", "figure"),
-    [Input("stock-dropdown", "value")]
-)
-def update_graph(stock):
-    stock_data = get_stocks(stock)
-    return plot_candlestick_with_indicators(stock_data, stock)  # Use the updated function
-
-# Run the app on a specific port
-if __name__ == "__main__":
-    app.run_server(debug=True, port=8050, use_reloader=False)
+if __name__ == '__main__':
+    run_dashboard()
