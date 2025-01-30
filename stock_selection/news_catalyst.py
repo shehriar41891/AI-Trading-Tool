@@ -66,26 +66,26 @@ news_data = get_news_for_valid_stocks(valid_stocks)
 #filtering out old news 
 time_threshold = datetime.utcnow() - timedelta(hours=24)
 
-filtered_news = {}
+# filtered_news = {}
 
-for stock, articles in news_data.items():
-    filtered_news[stock] = [
-        article
-        for article in articles
-        if datetime.strptime(article["published_utc"], "%Y-%m-%dT%H:%M:%SZ") > time_threshold
-    ]
+# for stock, articles in news_data.items():
+#     filtered_news[stock] = [
+#         article
+#         for article in articles
+#         if datetime.strptime(article["published_utc"], "%Y-%m-%dT%H:%M:%SZ") > time_threshold
+#     ]
 
-# Output the filtered news with summaries
-for stock, articles in filtered_news.items():
-    print(f"News for {stock} in the last 24 hours:")
-    for article in articles:
-        title = article.get("title", "No Title")
-        published_date = article.get("published_utc", "Unknown Date")
-        url = article.get("url", "No URL provided")
-        summary = article.get("summary", "No summary available")  # Safely get summary
+# # Output the filtered news with summaries
+# for stock, articles in filtered_news.items():
+#     print(f"News for {stock} in the last 24 hours:")
+#     for article in articles:
+#         title = article.get("title", "No Title")
+#         published_date = article.get("published_utc", "Unknown Date")
+#         url = article.get("url", "No URL provided")
+#         summary = article.get("summary", "No summary available")  # Safely get summary
 
-        print(f"  - {title} (Published: {published_date})")
-        print(f"    {summary}")
-        print(f"    {url}")
-    if not articles:
-        print(f"  No news in the last 24 hours.\n")
+#         print(f"  - {title} (Published: {published_date})")
+#         print(f"    {summary}")
+#         print(f"    {url}")
+#     if not articles:
+#         print(f"  No news in the last 24 hours.\n")

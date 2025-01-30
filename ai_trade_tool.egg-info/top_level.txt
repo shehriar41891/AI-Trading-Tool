@@ -1,0 +1,4 @@
+Technical_analysis
+db
+sell_buy
+stock_selection

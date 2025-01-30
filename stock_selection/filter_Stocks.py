@@ -96,12 +96,12 @@ def filter_popular_stocks(stocks):
 
     return valid_stocks
 
-# 3. Continuous Monitoring of NASDAQ 100 Stocks
-def monitor_nasdaq_100():
-    valid_stocks = filter_popular_stocks(nasdaq_100_stocks)
+# # 3. Continuous Monitoring of NASDAQ 100 Stocks
+# def monitor_nasdaq_100():
+#     valid_stocks = filter_popular_stocks(nasdaq_100_stocks)
 
-    # Process valid stocks
-    print(f"Valid stocks: {valid_stocks}")
+#     # Process valid stocks
+#     print(f"Valid stocks: {valid_stocks}")
 
-# 4. Start Monitoring
-monitor_nasdaq_100()
+# # 4. Start Monitoring
+# monitor_nasdaq_100()

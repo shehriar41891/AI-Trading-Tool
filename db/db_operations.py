@@ -1,4 +1,4 @@
-from connection import database_connection
+from .connection import database_connection
 
 # Connect to MongoDB
 db = database_connection()

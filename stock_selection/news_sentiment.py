@@ -37,11 +37,11 @@ def analyze_sentiment(input_text):
     )
     return response.strip()
 
-# Example usage
-text_to_analyze = """
-Apple Inc. reported its quarterly earnings, with a surprising 10% increase in revenue, 
-and a new product launch is expected next quarter. Analysts are optimistic about future growth.
-"""
-result = analyze_sentiment(text_to_analyze)
-print("Sentiment Analysis Result:")
-print(result)
+# # Example usage
+# text_to_analyze = """
+# Apple Inc. reported its quarterly earnings, with a surprising 10% increase in revenue, 
+# and a new product launch is expected next quarter. Analysts are optimistic about future growth.
+# """
+# result = analyze_sentiment(text_to_analyze)
+# print("Sentiment Analysis Result:")
+# print(result)

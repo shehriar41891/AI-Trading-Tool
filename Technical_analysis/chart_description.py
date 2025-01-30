@@ -42,17 +42,17 @@ def analyze_candlestick_text(chart_text):
     )
     return response.strip()
 
-# Example usage
-chart_text_description = """
-The candlestick chart for AAPL shows an initial uptrend in the morning, 
-followed by a peak around midday before experiencing a sharp decline in the afternoon.
-The price consistently stays below both the 10-period SMA and EMA after the drop, 
-indicating bearish momentum. Bollinger Bands widen during the selloff, 
-signaling high volatility, and later contract, suggesting reduced price movement.
-The overall trend remains downward, with no strong reversal signals,
-implying continued selling pressure.
-"""
+# # Example usage
+# chart_text_description = """
+# The candlestick chart for AAPL shows an initial uptrend in the morning, 
+# followed by a peak around midday before experiencing a sharp decline in the afternoon.
+# The price consistently stays below both the 10-period SMA and EMA after the drop, 
+# indicating bearish momentum. Bollinger Bands widen during the selloff, 
+# signaling high volatility, and later contract, suggesting reduced price movement.
+# The overall trend remains downward, with no strong reversal signals,
+# implying continued selling pressure.
+# """
 
-result = analyze_candlestick_text(chart_text_description)
-print("Trading Recommendation:")
-print(result)
+# result = analyze_candlestick_text(chart_text_description)
+# print("Trading Recommendation:")
+# print(result)
