@@ -17,7 +17,7 @@ def get_weighted_shares_polygon(ticker):
         ticker_details = client.get_ticker_details(ticker)
         
         # Print the available attributes of the response object for debugging
-        print("Ticker Details:", dir(ticker_details))
+        # print("Ticker Details:", dir(ticker_details))
         
         # Access weighted shares outstanding
         if hasattr(ticker_details, 'weighted_shares_outstanding'):

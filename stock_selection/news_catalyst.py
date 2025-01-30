@@ -63,7 +63,7 @@ def get_news_for_valid_stocks(valid_stocks):
 valid_stocks = ["AAPL", "MSFT"]  # Replace with your valid_stocks array
 news_data = get_news_for_valid_stocks(valid_stocks)
 
-print('The news data is',news_data)
+# print('The news data is',news_data)
 
 #filtering out old news 
 time_threshold = datetime.utcnow() - timedelta(hours=24)

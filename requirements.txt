@@ -7,3 +7,5 @@ langchain_openai
 plotly
 dash
 pymongo
+selenium
+webdriver-manager

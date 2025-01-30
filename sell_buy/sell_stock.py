@@ -17,9 +17,11 @@ def sell_hold_stock():
         id = stock['_id']
         #create a short description of the stock
         _, close_price, percentage_change, relative_volume = calculate_metrics(id)
+        float = get_weighted_shares_polygon(id)
         stock_daily_detials = f"""
          The stock last closing price is {close_price} for previous day and percentage change till
-         now is {percentage_change} and finally the relative volume is {relative_volume}
+         now is {percentage_change} and finally the relative volume is {relative_volume} and float
+         is {float}
         """
         
         #new sentiment
@@ -51,6 +53,7 @@ def sell_hold_stock():
             if not articles:
                 latest_news.append('no news in last 24 hours')
                 print(f"  No news in the last 24 hours.\n")
+                return 
         
         all_news = [] 
         for news in latest_news:
@@ -60,8 +63,9 @@ def sell_hold_stock():
         summarized_news = extract_and_summarize_stock_news(id,all_news) #summarize the news 
         sentiment_of_news = analyze_sentiment(id,summarized_news)
         
+        ##candlestick drawing, visual to text and fina decision
+        run_dashboard()
         
-          
 
     
 sell_hold_stock()

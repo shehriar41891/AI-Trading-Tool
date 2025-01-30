@@ -49,7 +49,7 @@ def calculate_metrics(stock):
                     'volume': agg.volume
                 })
                 
-            print(F'The data we get is {stock}',data)
+            # print(F'The data we get is {stock}',data)
 
             stock_data = pd.DataFrame(data)
 
