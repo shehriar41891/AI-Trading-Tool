@@ -45,3 +45,5 @@ def find_all_stocks():
         print(f"Error retrieving stocks: {e}")
         return []
 
+
+add_to_db('NVIDIA','NVDA')

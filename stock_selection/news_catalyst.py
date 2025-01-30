@@ -29,7 +29,7 @@ def fetch_stock_news(stock):
         response = requests.get(url)
         response.raise_for_status()  # Raise HTTPError for bad responses (4xx or 5xx)
 
-        news_data = response.json()        
+        news_data = response.json()   
         news = []
         for item in news_data.get("results", []):
             news.append({
@@ -63,6 +63,8 @@ def get_news_for_valid_stocks(valid_stocks):
 valid_stocks = ["AAPL", "MSFT"]  # Replace with your valid_stocks array
 news_data = get_news_for_valid_stocks(valid_stocks)
 
+print('The news data is',news_data)
+
 #filtering out old news 
 time_threshold = datetime.utcnow() - timedelta(hours=24)
 
@@ -74,6 +76,8 @@ time_threshold = datetime.utcnow() - timedelta(hours=24)
 #         for article in articles
 #         if datetime.strptime(article["published_utc"], "%Y-%m-%dT%H:%M:%SZ") > time_threshold
 #     ]
+
+# print(news_data)
 
 # # Output the filtered news with summaries
 # for stock, articles in filtered_news.items():
