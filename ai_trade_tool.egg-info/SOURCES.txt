@@ -9,6 +9,10 @@ ai_trade_tool.egg-info/PKG-INFO
 ai_trade_tool.egg-info/SOURCES.txt
 ai_trade_tool.egg-info/dependency_links.txt
 ai_trade_tool.egg-info/top_level.txt
+automation_selenium/__init__.py
+automation_selenium/automatino_funcs.py
+automation_selenium/login.py
+automation_selenium/read_image.py
 db/__init__.py
 db/connection.py
 db/db_operations.py
@@ -20,3 +24,4 @@ stock_selection/floatShare.py
 stock_selection/news_catalyst.py
 stock_selection/news_sentiment.py
 stock_selection/stock_selection.py
+stock_selection/summarization.py

@@ -10,62 +10,65 @@ from db.db_operations import add_to_db
 from db.db_operations import delete_from_db
 from datetime import datetime, timedelta
 from stock_selection.summarization import extract_and_summarize_stock_news
+# from automation_selenium.download_candle import download_plot
+from automation_selenium.read_image import read_image
 
-def sell_hold_stock():
-    stocks = find_all_stocks() #gives array of the items 
-    for stock in stocks:
-        id = stock['_id']
-        #create a short description of the stock
-        _, close_price, percentage_change, relative_volume = calculate_metrics(id)
-        float = get_weighted_shares_polygon(id)
-        stock_daily_detials = f"""
-         The stock last closing price is {close_price} for previous day and percentage change till
-         now is {percentage_change} and finally the relative volume is {relative_volume} and float
-         is {float}
-        """
+def sell_hold_stock(stock_details,name):
+    print('The stock information is ',stock_details)
         
-        #new sentiment
-        print('The stocks we got is ',[id])
-        news_data = get_news_for_valid_stocks([id])
-        
-        print('The name is ',id)
-        
-        time_threshold = datetime.utcnow() - timedelta(hours=24)
-        filtered_news = {}
-
-        for stock_name,articles in news_data.items():
-            filtered_news[stock_name] = [
-                article
-                for article in articles
-                if datetime.strptime(article["published_utc"], "%Y-%m-%dT%H:%M:%SZ") > time_threshold
-            ]
-            
-        print('The filtered news is ',filtered_news)
-                    
-        latest_news  = []
-        for stock,articles in filtered_news.items():
-            print(f"News for {stock} in the last 24 hours:")
-            for article in articles:
-                print(article)
-                title = article.get("title", "No Title")
-                summary = article.get("summary", "No summary available")  # Safely get summary
-                latest_news.append({'title' : title, 'summary' : summary})
-            if not articles:
-                latest_news.append('no news in last 24 hours')
-                print(f"  No news in the last 24 hours.\n")
-                return 
-        
-        all_news = [] 
-        for news in latest_news:
-            all_news.append(news['summary'])
-        all_news = ''.join(all_news)
-        
-        summarized_news = extract_and_summarize_stock_news(id,all_news) #summarize the news 
-        sentiment_of_news = analyze_sentiment(id,summarized_news)
-        
-        ##candlestick drawing, visual to text and fina decision
-        run_dashboard()
-        
-
+    #new sentiment
+    print('The stocks we got is ',[name])
+    news_data = get_news_for_valid_stocks([name])
     
-sell_hold_stock()
+    print('The name is ',name)
+    
+    time_threshold = datetime.utcnow() - timedelta(hours=24)
+    filtered_news = {}
+
+    for stock_name,articles in news_data.items():
+        filtered_news[stock_name] = [
+            article
+            for article in articles
+            if datetime.strptime(article["published_utc"], "%Y-%m-%dT%H:%M:%SZ") > time_threshold
+        ]
+        
+    print('The filtered news is ',filtered_news)
+                
+    latest_news = []
+    for stock,articles in filtered_news.items():
+        print(f"News for {stock} in the last 24 hours:")
+        for article in articles:
+            print(article)
+            title = article.get("title", "No Title")
+            summary = article.get("summary", "No summary available")  # Safely get summary
+            latest_news.append({'title' : title, 'summary' : summary})
+        if not articles:
+            latest_news.append('no news in last 24 hours')
+            print(f"  No news in the last 24 hours.\n")
+            return 
+    
+    all_news = [] 
+    for news in latest_news:
+        all_news.append(news['summary'])
+    all_news = ''.join(all_news)
+    
+    summarized_news = extract_and_summarize_stock_news(name,all_news) #summarize the news 
+    sentiment_of_news = analyze_sentiment(name,summarized_news)
+    
+    ##candlestick drawing, visual to text and fina decision
+    # run_dashboard()
+    #run the automation 
+    # download_plot() this function will download the plot from localhost automatically
+    image_path = './downloads/newplot.png'
+    image = read_image(image_path)
+    #get the textual description
+    textual_description = visual_to_text(image)
+    #analyze the candle stick result to get final move 
+    final_move = analyze_candlestick_text(stock_details,sentiment_of_news,textual_description)
+    
+    #if final move says sell then we should automate via selenium to sell the stock
+    # if final move says hold we will wait for few more minute 
+    #if final move says more of the stock we can buy more of the stock
+    print('The final answer is ',final_move)
+
+# sell_hold_stock('AAPL')
