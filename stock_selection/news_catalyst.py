@@ -60,7 +60,7 @@ def get_news_for_valid_stocks(valid_stocks):
 
 
 # Example usage:
-valid_stocks = ["AAPL", "MSFT"]  # Replace with your valid_stocks array
+valid_stocks = ["AAPL"]  # Replace with your valid_stocks array
 news_data = get_news_for_valid_stocks(valid_stocks)
 
 # print('The news data is',news_data)

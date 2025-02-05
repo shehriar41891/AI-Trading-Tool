@@ -1,4 +1,5 @@
 Technical_analysis
+automation_selenium
 db
 sell_buy
 stock_selection

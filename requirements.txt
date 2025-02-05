@@ -9,3 +9,4 @@ dash
 pymongo
 selenium
 webdriver-manager
+opencv-python
