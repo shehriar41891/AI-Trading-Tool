@@ -9,7 +9,10 @@ from automation_selenium.automatino_funcs import search_market,automate_buy,auto
 from automation_selenium.automatino_funcs import capture_candlestick_chart,connect_paper_trading
 from db.db_operations import find_all_stocks
 from sell_buy.sell_stock import sell_hold_stock
-
+import requests
+from bs4 import BeautifulSoup
+from sell_buy.buy_stock import buy_stock
+from automation_selenium.automatino_funcs import automate_buy,search_remaining
 # Load environment variables
 load_dotenv()
 
@@ -58,7 +61,7 @@ sign_in_submit.click()
 
 # Wait for login to complete and CAPTCHA to be solved manually
 print("Please solve the CAPTCHA manually...")
-time.sleep(30)  # Wait for manual CAPTCHA solving (adjust the time as needed)
+time.sleep(40)  # Wait for manual CAPTCHA solving (adjust the time as needed)
 
 # After CAPTCHA is solved, continue with the next steps
 print("Continuing after CAPTCHA is solved...")
@@ -70,21 +73,59 @@ sign_in_submit.click()
 # Wait before closing
 time.sleep(10)
 
+#connect to paper trading
+stocks = ['NVDA','MSFT']
+search_market(driver,stocks[0])
+connect_paper_trading(driver)
 capture_candlestick_chart(driver, "./download")
 
-#connect to paper trading
-connect_paper_trading(driver)
-
 #as long as we are in the game we need to keep playing 
-stocks = find_all_stocks()
-for stock in stocks:
-    name = stock['_id']
-    search_market(driver, name)
+#let assume for today we have the following stock to look
+stocks_cons = []
+for stock in stocks[1:]:
+    name = stock
+    search_remaining(driver, name)
     stock_info = stock_details(driver)
     print('The stock details is ',stock_info)
+    min_est_per = 0.1
+    min_est_rv = 0.34
+    max_est_price = 6000
+    max_est_float = 2000000000000
+    
+    print('Stocks detail',stock_info['shares_float'],stock_info['current_price'])
+    # if stock_info['shares_float'] <= max_est_float and stock_info['current_price'] <= max_est_price and stock_info['relative_volume'] >=min_est_rv and stock_info['percentage_change'] >= min_est_per:
+    if True:
+        res = buy_stock(stock_info,name)
+        print('The res for buy is ',res)
+        if True:
+            print('We are buying this stock')
+            automate_buy(driver)
+            #we will store the stock in database in future
+
     # result = sell_hold_stock(stock_info,stock)
 
-time.sleep(1200)
+#retrieved all the stocks we bought from database
+#let assume the following stocks are in the database
+max_checks = 10  # Stop after 100 iterations
+check_count = 0
+stocks_from_db = ['TSLA','AAPL']
+while check_count < max_checks:
+    print('We entered in the while loop')
+    for stock in stocks_from_db:
+        print('The stock in sell_buy ',stock)
+        res = sell_hold_stock(stock_info, stock)
+        print('The res for sell is ',res)
+        if res.lower() == 'sell':
+            automate_sell(driver)
+        elif res.lower() == 'buy':
+            automate_buy(driver)
+        else:
+            print('Hold for few more minutes')
+
+    time.sleep(600)  # Check every 10 minutes
+    check_count += 1
+
+time.sleep(2400)
 
 # Close the browser
 driver.quit()

@@ -2,6 +2,7 @@ import os
 from dotenv import load_dotenv
 from langchain_openai import OpenAI
 from langchain_core.prompts import PromptTemplate
+import json
 
 # Load environment variables
 load_dotenv()
@@ -62,8 +63,13 @@ def analyze_candlestick_text(stock_details, news_sentiment, chart_text):
             "news_sentiment": news_sentiment,
             "chart_text": chart_text,
         }
-    )
-    return response.strip()
+    ).strip()
+
+    try:
+        recommendation = json.loads(response) 
+        return recommendation  
+    except json.JSONDecodeError:
+        return {"Recommendation": "NO RECOMMENDATION"}  
 
 # Example usage:
 # result = analyze_candlestick_text(stock_details, news_sentiment, chart_text_description)

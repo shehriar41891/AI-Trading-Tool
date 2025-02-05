@@ -7,6 +7,12 @@ import re
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+import requests 
+from bs4 import BeautifulSoup
+from selenium.webdriver.common.action_chains import ActionChains
+import time
+
+headers = {"User-Agent": "Mozilla/5.0"} 
 
 
 def search_market(driver, stock_name):
@@ -59,36 +65,30 @@ def search_market(driver, stock_name):
 
 def capture_candlestick_chart(driver, save_directory):
     """
-    Captures a screenshot of the candlestick chart after clicking the download button,
-    and saves it to the specified directory.
+    Captures and saves a candlestick chart screenshot by clicking the download button.
     """
     try:
         time.sleep(5)  # Ensure the page is fully loaded
 
-        # Find and click the download button (identified by its div ID and class)
-        download_button = driver.find_element(By.ID, "header-toolbar-screenshot")  # Update XPath if needed
-        download_button.click()
+        # Locate and click the download button
+        download_button = driver.find_element(By.XPATH, "//div[@data-name='save-chart-image']")
+        ActionChains(driver).move_to_element(download_button).click().perform()
 
-        time.sleep(5)  # Wait for the download action to trigger (adjust timing as necessary)
-        
-        chart_element = driver.find_element(By.CLASS_NAME, "chart-container")  # Update selector if needed
+        time.sleep(5)  # Wait for the download to process
 
-        # Save screenshot in the desired directory
+        # Screenshot the chart (assuming there's a visible chart element)
+        chart_element = driver.find_element(By.CLASS_NAME, "chart-container")  # Adjust selector if necessary
         screenshot_path = "candlestick_chart.png"
         chart_element.screenshot(screenshot_path)
 
-        # Move the screenshot to the specified directory
+        # Move the screenshot to the desired directory
         if not os.path.exists(save_directory):
             os.makedirs(save_directory)
         
         final_path = os.path.join(save_directory, "candlestick_chart.png")
-
         shutil.move(screenshot_path, final_path)
 
         print(f"Screenshot saved at {final_path}")
-        
-        
-        
 
     except Exception as e:
         print(f"Error capturing candlestick chart: {e}")
@@ -116,12 +116,29 @@ def connect_paper_trading(driver):
     except Exception as e:
         print(f"Error connecting to Paper Trading: {e}")
 
+def automate_sell(driver):
+    wait = WebDriverWait(driver, 10)
 
-def automate_sell():
-    pass
+    # Click on the Sell button
+    sell_button = wait.until(EC.element_to_be_clickable((By.XPATH, '//div[@data-name="sell-order-button"]')))
+    sell_button.click()
 
-def automate_buy():
-    pass 
+    # Enter the number of shares
+    quantity_input = wait.until(EC.presence_of_element_located((By.ID, 'quantity-field')))
+    quantity_input.clear()
+    quantity_input.send_keys("1")
+
+    # Click Take Profit checkbox
+    take_profit_checkbox = wait.until(EC.element_to_be_clickable((By.XPATH, '//input[@data-name="order-ticket-profit-checkbox-bracket"]')))
+    take_profit_checkbox.click()
+
+    # Click Stop Loss checkbox
+    stop_loss_checkbox = wait.until(EC.element_to_be_clickable((By.XPATH, '//input[@data-name="order-ticket-loss-checkbox-bracket"]')))
+    stop_loss_checkbox.click()
+
+    # Click on the final Sell button
+    final_sell_button = wait.until(EC.element_to_be_clickable((By.XPATH, '//button[@data-name="place-and-modify-button"]')))
+    final_sell_button.click()
 
 def stock_details(driver):
     """
@@ -129,38 +146,62 @@ def stock_details(driver):
     percentage change, and current price using class names.
     """
     try:
-        # Function to convert text to float (if possible)
+        # Click the button first
+        button = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.CLASS_NAME, "button-vll9ujXF"))
+        )
+        button.click()
+        print("Button clicked successfully!")
+
+        # Wait for data to load
+        WebDriverWait(driver, 5).until(
+            EC.presence_of_element_located((By.CLASS_NAME, "title-cXDWtdxq"))
+        )
+
+        # Function to convert text to float and handle large numbers like B (billion) and M (million)
         def parse_float(value):
-            value = re.sub(r'[^\d.-]', '', value)
+            # value = re.sub(r'[^\d.-]', '', value)
+            value = value.strip()
+            value = re.sub(r'[^0-9KMBkmb.-]', '', value)
+            print('The value here is ',value)
             try:
-                return value
+                # Handling Billion (B), Million (M), and Thousand (K)
+                if 'B' in value or 'b' in value:
+                    return float(value.replace('B', '').replace('b', '').strip()) * 1e9  
+                elif 'M' in value or 'm' in value:
+                    return float(value.replace('M', '').replace('m', '').strip()) * 1e6 
+                elif 'K' in value or 'k' in value:
+                    return float(value.replace('K', '').replace('k', '').strip()) * 1e3  
+                else:
+                    return float(value)  # No suffix, directly return the float
             except ValueError:
                 return 0.0  # Return 0 if conversion fails
 
-        # Extract Average Volume (30D) and Shares Float using class names
+        # Extract Average Volume (30D) and Shares Float using class names 
         items = driver.find_elements(By.CLASS_NAME, "item-cXDWtdxq")
         
-        
-        # Loop through all items and find the ones we need
         shares_float = None
         avg_volume = None
         for item in items:
-            title = item.find_element(By.CLASS_NAME, "title-cXDWtdxq").text.strip()
-            print('The titles are ',title)
-            if title == "Shares float":
-                shares_float_text = item.find_element(By.CLASS_NAME, "data-cXDWtdxq").text.strip()
-                shares_float = parse_float(shares_float_text)
-            elif title == "Average Volume (30D)":
-                avg_volume_text = item.find_element(By.CLASS_NAME, "data-cXDWtdxq").text.strip()
-                avg_volume = parse_float(avg_volume_text)
+            try:
+                title = item.find_element(By.CLASS_NAME, "title-cXDWtdxq").text.strip()
+                value = item.find_element(By.CLASS_NAME, "data-cXDWtdxq").text.strip()
+                
+                if title == "Shares float":
+                    shares_float = parse_float(value)
+                elif title == "Average Volume (30D)":
+                    avg_volume = parse_float(value)
+            except Exception as e:
+                print(f"Error processing item {item}: {e}")
 
-        # Extract Current Volume using a CSS selector (for multiple classes)
+        # Extract Current Volume
         current_volume_text = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, ".valueValue-l31H9iuA.apply-common-tooltip"))
         ).text.strip()
+        print('Current volume without parsing is ',current_volume_text)
         current_volume = parse_float(current_volume_text)
 
-        # Extract Percentage Change (using the second occurrence)
+        # Extract Percentage Change (2nd occurrence)
         percentage_change_text = WebDriverWait(driver, 10).until(
             EC.presence_of_all_elements_located((By.CLASS_NAME, "change-SNvPvlJ3"))
         )[1].text.strip()
@@ -172,18 +213,136 @@ def stock_details(driver):
         ).text.strip().replace(' ', '')
         current_price = parse_float(current_price_text)
 
+        # Calculate Relative Volume (RVOL) correctly
+        if avg_volume and current_volume:
+            relative_volume = (current_volume / avg_volume) * 100  # Relative Volume as a percentage
+        else:
+            relative_volume = None
+
         # Return stock details
         stock_data = {
             "avg_volume": avg_volume,
             "shares_float": shares_float,
             "current_volume": current_volume,
             "percentage_change": percentage_change,
-            "current_price": current_price
+            "current_price": current_price,
+            "relative_volume": relative_volume
         }
 
         print(stock_data)
         return stock_data
 
+    except Exception as e:
+        print(f"Error extracting stock details: {e}")
+        return None
+    
+    
+#buy stock
+def automate_buy(driver, quantity=2, take_profit=116.33, stop_loss=115.40):
+    wait = WebDriverWait(driver, 10)
+
+    # Wait for the "Buy" button and click it
+    buy_button = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, '.buyButton-hw_3o_pb')))
+    ActionChains(driver).move_to_element(buy_button).click().perform()
+    
+    # Set the quantity
+    quantity_field = wait.until(EC.presence_of_element_located((By.ID, 'quantity-field')))
+    quantity_field.clear()
+    quantity_field.send_keys(str(quantity))
+
+    # --- Handling "Take Profit" Checkbox ---
+    try:
+        take_profit_checkbox = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'input[data-name="order-ticket-profit-checkbox-bracket"]')))
+        
+        # Scroll into view
+        driver.execute_script("arguments[0].scrollIntoView();", take_profit_checkbox)
+        time.sleep(1)  # Give time for UI update
+
+        # Try clicking parent element
+        parent_label = take_profit_checkbox.find_element(By.XPATH, './..')
+        parent_label.click()
+        
+        # If still not checked, force click via JavaScript
+        if not take_profit_checkbox.is_selected():
+            driver.execute_script("arguments[0].click();", take_profit_checkbox)
+
+    except Exception as e:
+        print(f"Error clicking Take Profit checkbox: {e}")
+
+    # --- Handling "Stop Loss" Checkbox ---
+    try:
+        stop_loss_checkbox = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'input[data-name="order-ticket-loss-checkbox-bracket"]')))
+        
+        # Scroll into view
+        driver.execute_script("arguments[0].scrollIntoView();", stop_loss_checkbox)
+        time.sleep(1)
+
+        # Try clicking parent element
+        parent_label = stop_loss_checkbox.find_element(By.XPATH, './..')
+        parent_label.click()
+
+        # If still not checked, force click via JavaScript
+        if not stop_loss_checkbox.is_selected():
+            driver.execute_script("arguments[0].click();", stop_loss_checkbox)
+
+    except Exception as e:
+        print(f"Error clicking Stop Loss checkbox: {e}")
+
+    # Click the "Place Order" button
+    place_order_button = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, 'button[data-name="place-and-modify-button"]')))
+    place_order_button.click()
+
+    # Wait for the order to be processed
+    time.sleep(3)
+
+def search_remaining(driver, stock_symbol):
+    """
+    Searches for a given stock symbol using the TradingView search functionality.
+    
+    :param driver: Selenium WebDriver instance
+    :param stock_symbol: The stock symbol to search (e.g., "NVDA")
+    """
+    try:
+        time.sleep(3)  # Allow page to load
+
+        # Click the symbol search button
+        search_button = driver.find_element(By.ID, "header-toolbar-symbol-search")
+        ActionChains(driver).move_to_element(search_button).click().perform()
+        print('Button is clicked')
+        time.sleep(10)  # Wait for search box to appear
+
+        # Find the search input field
+        search_input = driver.find_element(By.XPATH, "//input[@data-role='search']")
+        search_input.clear()  # Clear existing text
+        search_input.send_keys(stock_symbol)  # Enter the stock symbol
+        search_input.send_keys(Keys.RETURN)  # Press Enter
+
+        print(f"Searched for stock: {stock_symbol}")
+
+        # Add your logic here to extract the stock details after searching
+        stock_info = get_stock_info(driver)  # Assuming get_stock_info extracts stock details
+        if stock_info:
+            print(f"Stock Details: {stock_info}")
+        else:
+            print("Failed to retrieve stock details")
+
+    except Exception as e:
+        print(f"Error searching for stock: {e}")
+
+def get_stock_info(driver):
+    """
+    Extract stock details from the page.
+    
+    :param driver: Selenium WebDriver instance
+    :return: Dictionary containing stock info (e.g., shares, price)
+    """
+    try:
+        # Example of extracting stock details
+        shares_float = driver.find_element(By.CSS_SELECTOR, ".shares-float-class").text  # Replace with actual selector
+        current_price = driver.find_element(By.CSS_SELECTOR, ".current-price-class").text  # Replace with actual selector
+        
+        return {'shares_float': shares_float, 'current_price': current_price}
+    
     except Exception as e:
         print(f"Error extracting stock details: {e}")
         return None
