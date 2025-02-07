@@ -72,11 +72,11 @@ def buy_stock(stock_details,stock_name):
     final_move = analyze_candlestick_text(stock_details,sentiment_of_news,textual_description)
     
     #delete the image from the folder 
-    try:
-        os.remove(image_path)
-        print(f"Deleted image: {image_path}")
-    except Exception as e:
-        print(f"Error deleting image: {e}")
+    # try:
+    #     os.remove(image_path)
+    #     print(f"Deleted image: {image_path}")
+    # except Exception as e:
+    #     print(f"Error deleting image: {e}")
     
     return final_move,summarized_news,sentiment_of_news
 
