@@ -10,3 +10,6 @@ pymongo
 selenium
 webdriver-manager
 opencv-python
+fastapi
+uvicorn
+python-multipart

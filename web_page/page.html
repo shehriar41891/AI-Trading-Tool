@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Trading App</title>
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #1e293b;
+            color: white;
+            text-align: center;
+            padding: 50px;
+        }
+        .container {
+            background: #334155;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+            max-width: 600px;
+            margin: auto;
+        }
+        input {
+            padding: 12px;
+            width: 80%;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            border: none;
+            outline: none;
+            font-size: 16px;
+            background: #475569;
+            color: white;
+        }
+        button {
+            padding: 12px 20px;
+            margin: 8px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            color: white;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .blue { background-color: #3b82f6; }
+        .green { background-color: #10b981; }
+        .red { background-color: #ef4444; }
+        button:hover {
+            opacity: 0.8;
+        }
+        #message {
+            margin-top: 20px;
+            font-size: 18px;
+        }
+        .info-card {
+            background: #475569;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            text-align: left;
+        }
+        img {
+            margin-top: 20px;
+            max-width: 100%;
+            border-radius: 8px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Stock Trading App</h1>
+        <input type="text" id="stocks" placeholder="Enter stock symbols, comma-separated">
+        <br>
+        <button class="blue" onclick="handleSubmit('instantiate')">Instantiate</button>
+        <button class="green" onclick="handleSubmit('buy_stock')">Buy Stock</button>
+        <button class="red" onclick="handleSubmit('sell_stock')">Sell Stock</button>
+        <p id="message"></p>
+        <div id="stock_info" class="info-card"></div>
+        <div id="news" class="info-card"></div>
+        <img id="candlestick" src="" alt="Candlestick Chart">
+    </div>
+
+    <script>
+        function handleSubmit(endpoint) {
+            const stocks = document.getElementById("stocks").value;
+            document.getElementById("message").innerText = "Processing...";
+
+            fetch(`http://localhost:8000/${endpoint}/`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ stocks: stocks.split(",") }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById("message").innerText = data.message || data.detail;
+                
+                if (data.stock_info) {
+                    document.getElementById("stock_info").innerHTML = 
+                        `<h3>Stock Info</h3><pre>${JSON.stringify(data.stock_info, null, 2)}</pre>`;
+                }
+                
+                if (data.summarized_news && data.sentiment_of_news) {
+                    document.getElementById("news").innerHTML = 
+                        `<h3>News & Sentiment</h3><p><b>Summary:</b> ${data.summarized_news}</p>
+                         <p><b>Sentiment:</b> ${data.sentiment_of_news}</p>`;
+                }
+
+                if (data.candlestick_chart) {
+                    document.getElementById("candlestick").src = data.candlestick_chart;
+                    document.getElementById("candlestick").style.display = "block";
+                }
+            })
+            .catch(() => {
+                document.getElementById("message").innerText = "Error processing request.";
+            });
+        }
+    </script>
+</body>
+</html>
