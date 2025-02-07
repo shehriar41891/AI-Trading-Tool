@@ -19,18 +19,6 @@ prompt = PromptTemplate.from_template(
     of candlestick chart data, stock details, and news sentiment, and provide a structured 
     trading recommendation including entry price, stop-loss, profit target, and position sizing.
 
-    **Analysis Steps:**
-    
-    1. **Momentum**: Identify if the stock shows a Bull Flag or Flat Top Breakout pattern 
-       and if it’s trading above the 9 EMA.
-    2. **Volume**: Check for low volume on red candles (pullbacks) and high volume on 
-       green candles (potential buy signal).
-    3. **Support & Resistance**: Consider key support and resistance levels and suggest 
-       a stop-loss level.
-    4. **Trend Confirmation**: Evaluate the overall trend based on the description.
-    5. **Stock Details**: Consider the stock’s market sector, recent performance, and key metrics.
-    6. **News Sentiment**: Analyze recent news sentiment related to the stock.
-
     **Structured Recommendation Format:**
     
     {{

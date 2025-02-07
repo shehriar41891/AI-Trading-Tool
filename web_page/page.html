@@ -3,81 +3,91 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stock Trading App</title>
+    <title>Stock Trading Dashboard</title>
     <style>
         body {
             font-family: 'Poppins', sans-serif;
-            background-color: #1e293b;
-            color: white;
-            text-align: center;
-            padding: 50px;
+            background-color: #0f172a;
+            color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
         }
         .container {
-            background: #334155;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
-            max-width: 600px;
-            margin: auto;
+            background: #1e293b;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0px 4px 15px rgba(255, 255, 255, 0.2);
+            max-width: 700px;
+            width: 100%;
+            text-align: center;
         }
         input {
-            padding: 12px;
-            width: 80%;
+            padding: 14px;
+            width: 100%;
             margin-bottom: 20px;
             border-radius: 8px;
             border: none;
             outline: none;
-            font-size: 16px;
-            background: #475569;
+            font-size: 18px;
+            background: #334155;
             color: white;
         }
         button {
-            padding: 12px 20px;
-            margin: 8px;
+            padding: 14px 24px;
+            margin: 10px;
             border: none;
             border-radius: 8px;
-            font-size: 16px;
-            color: white;
+            font-size: 18px;
+            font-weight: bold;
             cursor: pointer;
             transition: 0.3s;
         }
-        .blue { background-color: #3b82f6; }
-        .green { background-color: #10b981; }
-        .red { background-color: #ef4444; }
+        .green { background-color: #10b981; color: white; }
+        .red { background-color: #ef4444; color: white; }
         button:hover {
-            opacity: 0.8;
-        }
-        #message {
-            margin-top: 20px;
-            font-size: 18px;
+            opacity: 0.9;
         }
         .info-card {
-            background: #475569;
+            background: #334155;
             padding: 20px;
             border-radius: 8px;
             margin-top: 20px;
             text-align: left;
+            box-shadow: 0px 2px 8px rgba(255, 255, 255, 0.1);
+        }
+        .info-card h3 {
+            margin-bottom: 10px;
+            border-bottom: 2px solid #10b981;
+            padding-bottom: 5px;
+        }
+        #message {
+            margin-top: 20px;
+            font-size: 20px;
+            font-weight: bold;
+            color: #10b981;
         }
         img {
             margin-top: 20px;
             max-width: 100%;
             border-radius: 8px;
-            display: none;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Stock Trading App</h1>
+        <h1>Stock Trading Dashboard</h1>
         <input type="text" id="stocks" placeholder="Enter stock symbols, comma-separated">
         <br>
-        <button class="blue" onclick="handleSubmit('instantiate')">Instantiate</button>
-        <button class="green" onclick="handleSubmit('buy_stock')">Buy Stock</button>
-        <button class="red" onclick="handleSubmit('sell_stock')">Sell Stock</button>
+        <button class="green" onclick="handleSubmit('buy_stock')">Buy new Stocks</button>
+        <button class="red" onclick="handleSubmit('sell_stock')">Analyze the existing Stock</button>
         <p id="message"></p>
         <div id="stock_info" class="info-card"></div>
         <div id="news" class="info-card"></div>
-        <img id="candlestick" src="" alt="Candlestick Chart">
+        <div id="reason" class="info-card"></div>
+        <!-- <img id="candlestick" src="../downloaded_candles/candlestick_chart.png" alt="Candlestick Chart"> -->
     </div>
 
     <script>
@@ -104,7 +114,12 @@
                         `<h3>News & Sentiment</h3><p><b>Summary:</b> ${data.summarized_news}</p>
                          <p><b>Sentiment:</b> ${data.sentiment_of_news}</p>`;
                 }
-
+                
+                if (data.reason) {
+                    document.getElementById("reason").innerHTML = 
+                        `<h3>Reason</h3><p>${data.reason}</p>`;
+                }
+                
                 if (data.candlestick_chart) {
                     document.getElementById("candlestick").src = data.candlestick_chart;
                     document.getElementById("candlestick").style.display = "block";
