@@ -278,7 +278,8 @@ def buy_stock_endpoint(stock_action: StockActionRequest):
         print('The result in here is ',res)
         recommendation = res['Recommendation']
         print('The recommendation is ',recommendation)
-        if recommendation.lower() == 'buy':
+        # if recommendation.lower() == 'buy':
+        if True:
             automate_buy(driver, res)
             return JSONResponse(content={
                 "message": f"Buying stock {stock_action.stocks[0]}",
@@ -288,6 +289,7 @@ def buy_stock_endpoint(stock_action: StockActionRequest):
                 "sentiment_of_news": sentiment_of_news,
             })
         else:
+            print('We are not buying the stock')
             raise HTTPException(status_code=400, detail=f"Recommendation is not to buy: {recommendation}")
     except Exception as e:
         driver.quit()
