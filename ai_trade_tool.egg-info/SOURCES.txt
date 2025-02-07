@@ -1,5 +1,6 @@
 setup.py
 Technical_analysis/__init__.py
+Technical_analysis/buy_recommendation.py
 Technical_analysis/chart_description.py
 Technical_analysis/chart_to_text.py
 Technical_analysis/model_init.py
@@ -17,6 +18,7 @@ db/__init__.py
 db/connection.py
 db/db_operations.py
 sell_buy/__init__.py
+sell_buy/buy_stock.py
 sell_buy/sell_stock.py
 stock_selection/__init__.py
 stock_selection/filter_Stocks.py

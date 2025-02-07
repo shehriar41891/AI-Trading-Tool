@@ -3,7 +3,6 @@ from stock_selection.news_sentiment import analyze_sentiment #news things done h
 from stock_selection.filter_Stocks import calculate_metrics #gives value,PR and RV
 from stock_selection.floatShare import get_weighted_shares_polygon #gives float 
 from Technical_analysis.chart_description import analyze_candlestick_text #gpt-3.5
-from Technical_analysis.vision_model import visual_to_text #vision model convert image to text
 from Technical_analysis.plot_candlestick import run_dashboard #draw the candle stick chart
 from db.db_operations import find_all_stocks
 from db.db_operations import add_to_db
@@ -12,6 +11,7 @@ from datetime import datetime, timedelta
 from stock_selection.summarization import extract_and_summarize_stock_news
 # from automation_selenium.download_candle import download_plot
 from automation_selenium.read_image import read_image
+from Technical_analysis.chart_to_text import visual_to_text
 
 def sell_hold_stock(stock_details,name):
     print('The stock information is ',stock_details)

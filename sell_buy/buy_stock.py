@@ -3,7 +3,6 @@ from stock_selection.news_sentiment import analyze_sentiment #news things done h
 from stock_selection.filter_Stocks import calculate_metrics #gives value,PR and RV
 from stock_selection.floatShare import get_weighted_shares_polygon #gives float 
 from Technical_analysis.buy_recommendation import analyze_candlestick_text #gpt-3.5
-from Technical_analysis.vision_model import visual_to_text #vision model convert image to text
 from Technical_analysis.plot_candlestick import run_dashboard #draw the candle stick chart
 from db.db_operations import find_all_stocks
 from db.db_operations import add_to_db
@@ -12,6 +11,8 @@ from datetime import datetime, timedelta
 from stock_selection.summarization import extract_and_summarize_stock_news
 # from automation_selenium.download_candle import download_plot
 from automation_selenium.read_image import read_image
+from Technical_analysis.chart_to_text import visual_to_text
+import os 
 
 def buy_stock(stock_details,stock_name):
     print('The stock information is ',stock_details)
@@ -54,18 +55,30 @@ def buy_stock(stock_details,stock_name):
     summarized_news = extract_and_summarize_stock_news(stock_name,all_news) #summarize the news 
     sentiment_of_news = analyze_sentiment(stock_name,summarized_news)
     
+    #store sentiment of news and news in a file 
+    with open('file.txt','w') as f:
+        f.write(summarized_news)
+        f.write(sentiment_of_news)
+    
     print('Sentiment of the new is ',sentiment_of_news)
     
     # image_path = './downloads/newplot.png'
     # image = read_image(image_path)
-    image = ''
+    image_path = '../downloaded_candles/candlestick_chart.png'
     #get the textual description
-    textual_description = visual_to_text(image)
+    textual_description = visual_to_text(image_path)
     print('Textual description is ',textual_description)
     #final decision based on the above things 
     final_move = analyze_candlestick_text(stock_details,sentiment_of_news,textual_description)
     
-    return final_move
+    #delete the image from the folder 
+    try:
+        os.remove(image_path)
+        print(f"Deleted image: {image_path}")
+    except Exception as e:
+        print(f"Error deleting image: {e}")
+    
+    return final_move,summarized_news,sentiment_of_news
 
 
 

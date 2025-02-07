@@ -21,6 +21,7 @@ def search_market(driver, stock_name):
     Handles both cases:
     1. When the search bar is directly available.
     2. When "Get started for free" must be clicked first, then "Search markets here".
+    3. When search button (`tv-header-search-container`) is used.
     """
     try:
         time.sleep(3)  # Ensure page is fully loaded
@@ -47,7 +48,16 @@ def search_market(driver, stock_name):
 
             except:
                 print("Required elements not found in Case 2.")
-                return
+
+                # Case 3: Check if the button with the specific class is available and click it
+                try:
+                    search_button = driver.find_element(By.CLASS_NAME, "tv-header-search-container")
+                    search_button.click()
+                    time.sleep(2)
+                    print("Clicked on the search button with class 'tv-header-search-container'")
+                except:
+                    print("Search button not found. Exiting search.")
+                    return
 
         # Enter stock name
         search_input = driver.switch_to.active_element  # Get the active input field
@@ -62,29 +72,41 @@ def search_market(driver, stock_name):
 
     except Exception as e:
         print(f"Error searching for {stock_name}: {e}")
-
+        
+        
 def capture_candlestick_chart(driver, save_directory):
+    print('We are inside the candlestick download function ...')
     """
-    Captures and saves a candlestick chart screenshot by clicking the download button.
+    Captures and saves a candlestick chart screenshot by clicking the download button from a dropdown.
     """
     try:
-        time.sleep(5)  # Ensure the page is fully loaded
+        # Wait for the "header-toolbar-screenshot" button to be clickable and click it
+        screenshot_button = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.ID, "header-toolbar-screenshot"))  # Target by the button's ID
+        )
+        ActionChains(driver).move_to_element(screenshot_button).click().perform()
 
-        # Locate and click the download button
-        download_button = driver.find_element(By.XPATH, "//div[@data-name='save-chart-image']")
+        # Wait for the dropdown to appear and the "Download image" option to be clickable
+        download_button = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.CSS_SELECTOR, '[data-name="save-chart-image"]'))  # Target the download option
+        )
         ActionChains(driver).move_to_element(download_button).click().perform()
 
-        time.sleep(5)  # Wait for the download to process
+        # Wait for the download to complete (you can adjust the time as needed)
+        time.sleep(5)
 
-        # Screenshot the chart (assuming there's a visible chart element)
+        print('Download option clicked, waiting for the chart to be saved...')
+
+        # Ensure the save directory exists
+        if not os.path.exists(save_directory):
+            os.makedirs(save_directory)
+
+        # If you're capturing a screenshot of the chart itself (assuming the chart is rendered on the page):
         chart_element = driver.find_element(By.CLASS_NAME, "chart-container")  # Adjust selector if necessary
         screenshot_path = "candlestick_chart.png"
         chart_element.screenshot(screenshot_path)
 
         # Move the screenshot to the desired directory
-        if not os.path.exists(save_directory):
-            os.makedirs(save_directory)
-        
         final_path = os.path.join(save_directory, "candlestick_chart.png")
         shutil.move(screenshot_path, final_path)
 
@@ -229,7 +251,11 @@ def stock_details(driver):
             "relative_volume": relative_volume
         }
 
-        print(stock_data)
+        
+        # #save stock's detail to a file 
+        # with open('file.txt','w') as f:
+        #     f.write(stock_data)
+                    
         return stock_data
 
     except Exception as e:
@@ -238,8 +264,13 @@ def stock_details(driver):
     
     
 #buy stock
-def automate_buy(driver, quantity=2, take_profit=116.33, stop_loss=115.40):
+def automate_buy(driver,res):
     wait = WebDriverWait(driver, 10)
+    
+    recommendation = res['Recommendation']
+    stop_loss = res['Stop-Loss']
+    profit_target = res['Profit Target']
+    shares_to_buy = res['Shares to Buy']
 
     # Wait for the "Buy" button and click it
     buy_button = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, '.buyButton-hw_3o_pb')))
@@ -248,7 +279,7 @@ def automate_buy(driver, quantity=2, take_profit=116.33, stop_loss=115.40):
     # Set the quantity
     quantity_field = wait.until(EC.presence_of_element_located((By.ID, 'quantity-field')))
     quantity_field.clear()
-    quantity_field.send_keys(str(quantity))
+    quantity_field.send_keys(str(shares_to_buy))
 
     # --- Handling "Take Profit" Checkbox ---
     try:
