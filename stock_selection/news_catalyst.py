@@ -45,28 +45,22 @@ def fetch_stock_news(stock):
         return stock, []
 
 
-def get_news_for_valid_stocks(valid_stocks):
+def get_news_for_stock(stock: str):
     """
-    Fetch news for all valid stocks and return a dictionary of stock-news mapping.
+    Fetch news for a single stock ticker.
     """
-    stock_news = {}
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        results = executor.map(fetch_stock_news, valid_stocks)
-
-        for stock, news in results:
-            stock_news[stock] = news
-
-    return stock_news
+    stock, news = fetch_stock_news(stock)
+    return {stock: news}
 
 
-# Example usage:
-valid_stocks = ["AAPL"]  # Replace with your valid_stocks array
-news_data = get_news_for_valid_stocks(valid_stocks)
+# # Example usage:
+# valid_stocks = 'MBRX' # Replace with your valid_stocks array
+# news_data = get_news_for_stock(valid_stocks)
 
-# print('The news data is',news_data)
+# # print('The news data is',news_data)
 
-#filtering out old news 
-time_threshold = datetime.utcnow() - timedelta(hours=24)
+# #filtering out old news 
+# time_threshold = datetime.utcnow() - timedelta(hours=48)
 
 # filtered_news = {}
 

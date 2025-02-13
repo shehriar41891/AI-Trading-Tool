@@ -22,10 +22,11 @@ def visual_to_text(image_path):
     )
 
     # Convert image to Base64
+    print('The image path is',image_path)
     base64_image = encode_image(image_path)
-
+    
     response = client.chat.completions.create(
-        model="gpt-4-turbo",
+        model="gpt-4o",
         messages=[
             {"role": "system", "content": "You are a financial analyst with expertise in candlestick pattern recognition."},
             {"role": "user", "content": prompt},
@@ -42,12 +43,8 @@ def visual_to_text(image_path):
     # Extract the response content
     final_response = response.choices[0].message.content
 
-    # Write the response to a file
-    with open('file.txt', 'w') as f:
-        f.write(final_response)
-
     return final_response
 
-# Run the function
-# res = visual_to_text(image_path="../downloaded_candles/candlestick_chart.png")
+# # Run the function
+# res = visual_to_text(image_path="C:/Users/Hp/Desktop/ai-trade-tool/downloaded_candles/candlestick_chart.png")
 # print(res)
