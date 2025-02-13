@@ -24,7 +24,8 @@ def search_market(driver, stock_name):
     3. When search button (`tv-header-search-container`) is used.
     """
     try:
-        time.sleep(3)  # Ensure page is fully loaded
+        print('We inside in search market')
+        time.sleep(2)  # Ensure page is fully loaded
 
         # Case 1: Directly find and click the search bar
         try:
@@ -75,6 +76,7 @@ def search_market(driver, stock_name):
         
         
 def capture_candlestick_chart(driver, save_directory):
+    time.sleep(3)
     print('We are inside the candlestick download function ...')
     """
     Captures and saves a candlestick chart screenshot by clicking the download button from a dropdown.
@@ -264,14 +266,9 @@ def stock_details(driver):
     
     
 #buy stock
-def automate_buy(driver,res):
+def automate_buy(driver,shares,stop_loss,profit_take):
     wait = WebDriverWait(driver, 10)
     
-    recommendation = res['Recommendation']
-    stop_loss = res['Stop-Loss']
-    profit_target = res['Profit Target']
-    shares_to_buy = res['Shares to Buy']
-
     # Wait for the "Buy" button and click it
     buy_button = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, '.buyButton-hw_3o_pb')))
     ActionChains(driver).move_to_element(buy_button).click().perform()
@@ -279,7 +276,7 @@ def automate_buy(driver,res):
     # Set the quantity
     quantity_field = wait.until(EC.presence_of_element_located((By.ID, 'quantity-field')))
     quantity_field.clear()
-    quantity_field.send_keys(str(shares_to_buy))
+    quantity_field.send_keys(str(shares))
 
     # --- Handling "Take Profit" Checkbox ---
     try:
@@ -293,9 +290,17 @@ def automate_buy(driver,res):
         parent_label = take_profit_checkbox.find_element(By.XPATH, './..')
         parent_label.click()
         
+        print('clicked on the checkbox')
+        
         # If still not checked, force click via JavaScript
         if not take_profit_checkbox.is_selected():
             driver.execute_script("arguments[0].click();", take_profit_checkbox)
+            
+        print('We are done uptil this points')
+        
+        take_profit_field = wait.until(EC.presence_of_element_located((By.ID, 'take-profit-price-field')))
+        take_profit_field.clear()
+        take_profit_field.send_keys(profit_take)
 
     except Exception as e:
         print(f"Error clicking Take Profit checkbox: {e}")
@@ -311,10 +316,16 @@ def automate_buy(driver,res):
         # Try clicking parent element
         parent_label = stop_loss_checkbox.find_element(By.XPATH, './..')
         parent_label.click()
+        
+        print('click on the loss checkbox')
 
         # If still not checked, force click via JavaScript
         if not stop_loss_checkbox.is_selected():
             driver.execute_script("arguments[0].click();", stop_loss_checkbox)
+        
+        stop_loss_field = wait.until(EC.presence_of_element_located((By.ID, 'stop-loss-price-field')))
+        stop_loss_field.clear()
+        stop_loss_field.send_keys(stop_loss)
 
     except Exception as e:
         print(f"Error clicking Stop Loss checkbox: {e}")

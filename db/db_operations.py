@@ -8,15 +8,21 @@ if db is None:
 
 collection = db["stocks"]
 
-def add_to_db(stock_name, stock_id):
-    """Inserts or updates a stock record in MongoDB."""
+def add_to_db(stock_id, number_of_shares, stop_loss, profit_take):
+    """Inserts or updates a stock record in MongoDB with additional trading parameters."""
     try:
         collection.update_one(
             {"_id": stock_id}, 
-            {"$set": {"name": stock_name}}, 
+            {
+                "$set": {
+                    "number_of_shares": number_of_shares,
+                    "stop_loss": stop_loss,
+                    "profit_take": profit_take
+                }
+            }, 
             upsert=True
         )
-        print(f"Stock {stock_id} - {stock_name} added/updated successfully!")
+        print(f"Stock {stock_id} added/updated successfully with trading parameters!")
     except Exception as e:
         print(f"Error inserting {stock_id}: {e}")
 
@@ -46,4 +52,4 @@ def find_all_stocks():
         return []
 
 
-add_to_db('NVIDIA','NVDA')
+# add_to_db('NVIDIA','NVDA')

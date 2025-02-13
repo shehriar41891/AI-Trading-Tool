@@ -6,14 +6,8 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 import time
-import os 
-from dotenv import load_dotenv
 
-load_dotenv()
-
-WARRIOR_TRADING_URL = os.getenv('WARRIOR_TRADING_URL')
-
-def extract_stock_names(url):
+def extract_stock_data(url):
     options = Options()
     options.add_argument("--headless")  # Run in headless mode (no UI)
     options.add_argument("--disable-gpu")
@@ -46,14 +40,22 @@ def extract_stock_names(url):
             EC.presence_of_all_elements_located((By.XPATH, "//div[contains(@class, 'grid-cols-9')]/div"))
         )
 
+        # Define column names (modify these based on the actual website layout)
+        column_names = [
+            "name","Gap (%)", "Price", "Volume", "Relative Volume (Daily Rate)", 
+            "Relative Volume (5 min %)", "Change From Close (%)", "Float", "Short Interest"
+        ]
         # Extract table data
-        stock_names = []
+        stock_data = []
         table_elements = driver.find_elements(By.XPATH, "//div[contains(@class, 'grid-cols-9')]/div")
 
-        # Extract stock names (Assuming first column contains stock names)
-        for i, div in enumerate(table_elements):
-            if i % 9 == 0:  # First element in each row contains the stock name (if the table has 9 columns per row)
-                stock_names.append(div.text.strip())
+        # Assuming the table has 9 columns per row
+        num_cols = len(column_names)
+        for i in range(0, len(table_elements), num_cols):
+            row_values = [table_elements[j].text.strip() for j in range(i, min(i + num_cols, len(table_elements)))]
+            if len(row_values) == num_cols:  # Ensure full rows only
+                stock_entry = dict(zip(column_names, row_values))
+                stock_data.append(stock_entry)
 
     except Exception as e:
         print(f"Error: {e}")
@@ -61,4 +63,9 @@ def extract_stock_names(url):
         return []
 
     driver.quit()
-    return stock_names
+    return stock_data
+
+# # Test the function
+# stocks = extract_stock_data('https://www.warriortrading.com/day-trading-watch-list-top-stocks-to-watch/')
+# for stock in stocks:
+#     print(stock)

@@ -1,4 +1,4 @@
-from stock_selection.news_catalyst import get_news_for_valid_stocks 
+from stock_selection.news_catalyst import get_news_for_stock 
 from stock_selection.news_sentiment import analyze_sentiment #news things done here
 from stock_selection.filter_Stocks import calculate_metrics #gives value,PR and RV
 from stock_selection.floatShare import get_weighted_shares_polygon #gives float 
@@ -18,7 +18,7 @@ def sell_hold_stock(stock_details,name):
         
     #new sentiment
     print('The stocks we got is ',[name])
-    news_data = get_news_for_valid_stocks([name])
+    news_data = get_news_for_stock([name])
     
     print('The name is ',name)
     
