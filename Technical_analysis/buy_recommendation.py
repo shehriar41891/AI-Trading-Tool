@@ -46,7 +46,7 @@ prompt = PromptTemplate.from_template(
         "Recommendation": "<BUY | NOT BUY>",
         "Entry Price": "<Estimated optimal entry price if BUY>",
         "Stop-Loss": "<Recommended stop-loss price if BUY>",
-        "Profit Target": "<Expected price level to take profit if BUY>",
+        "Take-Profit": "<Expected price level to take profit if BUY>",
         "Shares to Buy": "<Number of shares to buy (≤ 5) if BUY>",
         "Reason": "<Brief reason for decision>"
     }}
