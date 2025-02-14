@@ -16,25 +16,32 @@ llm = OpenAI()
 prompt = PromptTemplate.from_template(
     """
     You are a professional stock trading analyst. Analyze the given textual description 
-    of candlestick chart data, stock details, and news sentiment, and provide a structured 
-    trading recommendation including entry price, stop-loss, profit target, and position sizing.
+    of candlestick chart data, stock details, and news sentiment. Your goal is to 
+    provide an updated structured trading recommendation while minimizing risk.  
 
-    **Structured Recommendation Format:**
-    
+    **Decision-Making Guidelines:**  
+    - **Buying:** If the trend is favorable, buy a maximum of 2 shares, but **do not buy** if current shares are already 10 or more.  
+    - **Selling:** If the trend is very bad, sell all current shares to minimize risk.  
+    - **Holding:** If the situation is unclear, hold without updating stop-loss or take-profit.  
+    - **Stop-Loss & Take-Profit:** Adjust these only if required to minimize risk; otherwise, keep them unchanged.  
+
+    **Structured Recommendation Format:**  
+
     {{
         "Recommendation": "<Buy | Sell | Hold>",
-        "Entry Price": "<Estimated optimal entry price>",
-        "Stop-Loss": "<Recommended stop-loss price>",
-        "Profit Target": "<Expected price level to take profit>",
-        "Position Sizing": {{
-            "If Buy": "<How many shares to buy>",
-            "If Sell": "<How many shares to sell>"
-        }},
+        "Current Shares": "<Number of shares currently held>",
+        "Stop-Loss": "<Revised stop-loss price, if required>",
+        "Take-Profit": "<Revised take-profit price, if required>",
+        "Shares to Buy": "<Number of shares to buy (max 2, or 0 if current shares >= 10)>",
+        "Shares to Sell": "<Number of shares to sell, or 0>"
     }}
 
     **Stock Details**: {stock_details}  
     **News Sentiment**: {news_sentiment}  
     **Textual Chart Data**: {chart_text}  
+    **Current Shares**: {current_shares}  
+    **Current Stop-Loss**: {current_stop_loss}  
+    **Current Take-Profit**: {current_take_profit}  
 
     Provide the response strictly in the above JSON format.
     """
@@ -44,12 +51,15 @@ prompt = PromptTemplate.from_template(
 chain = prompt | llm
 
 # Function for analyzing candlestick chart textual description
-def analyze_candlestick_text(stock_details, news_sentiment, chart_text):
+def analyze_candlestick_text(stock_details, news_sentiment, chart_text,current_shares,stop_loss,take_profit):
     response = chain.invoke(
         {
             "stock_details": stock_details,
             "news_sentiment": news_sentiment,
             "chart_text": chart_text,
+            "Current Shares": current_shares,
+            "current_stop_loss": stop_loss,
+            "current_take_profit": take_profit
         }
     ).strip()
 

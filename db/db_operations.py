@@ -8,6 +8,11 @@ if db is None:
 
 collection = db["stocks"]
 
+def get_current_shares(stock_id):
+    """Fetch the current number of shares from MongoDB."""
+    stock_data = collection.find_one({"_id": stock_id})
+    return stock_data.get("number_of_shares", 0) if stock_data else 0
+
 def add_to_db(stock_id, number_of_shares, stop_loss, profit_take):
     """Inserts or updates a stock record in MongoDB with additional trading parameters."""
     try:
@@ -40,7 +45,7 @@ def delete_from_db(stock_id):
 def find_all_stocks():
     """Retrieve all the stocks from the database."""
     try:
-        stocks = list(collection.find({}, {"_id": 1, "name": 1}))  # Fetch only relevant fields
+        stocks = list(collection.find())  
         if stocks:
             print(f"Successfully retrieved {len(stocks)} stocks.")
             return stocks
