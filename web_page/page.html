@@ -7,8 +7,8 @@
     <style>
         body {
             font-family: 'Poppins', sans-serif;
-            background-color: #0f172a;
-            color: #ffffff;
+            background-color: #f8fafc;
+            color: #0f172a;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -16,25 +16,15 @@
             margin: 0;
         }
         .container {
-            background: #1e293b;
+            background: #ffffff;
             padding: 40px;
             border-radius: 12px;
-            box-shadow: 0px 4px 15px rgba(255, 255, 255, 0.2);
+            box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.1);
             max-width: 700px;
             width: 100%;
             text-align: center;
         }
-        input {
-            padding: 14px;
-            width: 100%;
-            margin-bottom: 20px;
-            border-radius: 8px;
-            border: none;
-            outline: none;
-            font-size: 18px;
-            background: #334155;
-            color: white;
-        }
+        h1 { color: #10b981; }
         button {
             padding: 14px 24px;
             margin: 10px;
@@ -47,16 +37,15 @@
         }
         .green { background-color: #10b981; color: white; }
         .red { background-color: #ef4444; color: white; }
-        button:hover {
-            opacity: 0.9;
-        }
+        .blue { background-color: #3b82f6; color: white; }
+        button:hover { opacity: 0.9; }
         .info-card {
-            background: #334155;
+            background: #e2e8f0;
             padding: 20px;
             border-radius: 8px;
             margin-top: 20px;
             text-align: left;
-            box-shadow: 0px 2px 8px rgba(255, 255, 255, 0.1);
+            box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.1);
         }
         .info-card h3 {
             margin-bottom: 10px;
@@ -69,41 +58,83 @@
             font-weight: bold;
             color: #10b981;
         }
-        img {
+        .radio-group {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
             margin-top: 20px;
-            max-width: 100%;
-            border-radius: 8px;
+        }
+        .radio-group label {
+            font-size: 18px;
+            font-weight: bold;
+            color: #0f172a;
+            cursor: pointer;
+        }
+        .radio-group input { margin-right: 5px; }
+        .instructions {
+            text-align: left;
+            margin-top: 20px;
+            font-size: 16px;
+            color: #334155;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Stock Trading Dashboard</h1>
-        <input type="text" id="stocks" placeholder="Enter stock symbols, comma-separated">
-        <br>
-        <button class="green" onclick="handleSubmit('buy_stock')">Buy new Stocks</button>
-        <button class="red" onclick="handleSubmit('sell_stock')">Analyze the existing Stock</button>
+
+        <div class="radio-group">
+            <label>
+                <input type="radio" name="trade_option" value="paper_trading" onchange="setTradeOption()"> Paper Trading
+            </label>
+            <label>
+                <input type="radio" name="trade_option" value="real_broker" onchange="setTradeOption()"> With Real Broker
+            </label>
+        </div>
+
+        <button class="green" onclick="handleSubmit('sell_stock')">Start Analyzing</button>
+        <button class="red" onclick="stopAnalyzing()">Stop Analyzing</button>
+        <button class="blue" onclick="handleSubmit('buy_stock')">Buy Stock</button>
+
         <p id="message"></p>
+
         <div id="stock_info" class="info-card"></div>
         <div id="news" class="info-card"></div>
         <div id="reason" class="info-card"></div>
-        <!-- <img id="candlestick" src="../downloaded_candles/candlestick_chart.png" alt="Candlestick Chart"> -->
+
+        <div class="instructions">
+            <h3>How to Use:</h3>
+            <ul>
+                <li>Select "Paper Trading" or "With Real Broker" before starting.</li>
+                <li>Click "Start Analyzing" to begin the analysis.</li>
+                <li>Click "Stop Analyzing" to stop it.</li>
+                <li>Click "Buy Stock" if you want to place an order.</li>
+                <li>Check stock info, news sentiment, and reasons below.</li>
+            </ul>
+        </div>
     </div>
 
     <script>
+        let analyzing = false;
+
+        function setTradeOption() {
+            const tradeOption = document.querySelector('input[name="trade_option"]:checked');
+            if (tradeOption) {
+                document.cookie = `trade_option=${tradeOption.value}; path=/`;
+            }
+        }
+
         function handleSubmit(endpoint) {
-            const stocks = document.getElementById("stocks").value;
             document.getElementById("message").innerText = "Processing...";
 
-            fetch(`http://localhost:8000/${endpoint}/`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ stocks: stocks.split(",") }),
+            fetch(`http://localhost:8000/${endpoint}`, {
+                method: "GET",
             })
             .then(response => response.json())
             .then(data => {
                 document.getElementById("message").innerText = data.message || data.detail;
-                
+                analyzing = true;
+
                 if (data.stock_info) {
                     document.getElementById("stock_info").innerHTML = 
                         `<h3>Stock Info</h3><pre>${JSON.stringify(data.stock_info, null, 2)}</pre>`;
@@ -119,15 +150,19 @@
                     document.getElementById("reason").innerHTML = 
                         `<h3>Reason</h3><p>${data.reason}</p>`;
                 }
-                
-                if (data.candlestick_chart) {
-                    document.getElementById("candlestick").src = data.candlestick_chart;
-                    document.getElementById("candlestick").style.display = "block";
-                }
             })
             .catch(() => {
                 document.getElementById("message").innerText = "Error processing request.";
             });
+        }
+
+        function stopAnalyzing() {
+            if (analyzing) {
+                document.getElementById("message").innerText = "Analysis stopped.";
+                analyzing = false;
+            } else {
+                document.getElementById("message").innerText = "No active analysis to stop.";
+            }
         }
     </script>
 </body>

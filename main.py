@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Response, Request, Query, HTTPException
 from pydantic import BaseModel
 from automation_selenium.automatino_funcs import search_market, automate_buy, automate_sell, stock_details
 from automation_selenium.automatino_funcs import capture_candlestick_chart, connect_paper_trading,search_remaining
@@ -21,10 +21,15 @@ import os
 from dotenv import load_dotenv
 from db.db_operations import find_all_stocks,add_to_db,delete_from_db,get_current_shares
 import random
+from fastapi import FastAPI, Depends, Query
+from typing import Optional
+import re
+import threading
 
 load_dotenv()
 
 WARRIOR_TRADING_URL = os.getenv('WARRIOR_TRADING_URL')
+stop_analysis_flag = threading.Event()
 
 # Load environment variables
 load_dotenv()
@@ -91,10 +96,14 @@ def signin(driver):
     else:
         print('There is no sign in  button')
     print('We are done with sign in')
+    
+    signed_in = True  
+    return signed_in
 
 # Function to instantiate market data and connect
 def instantiate(driver, stock):
     search_market(driver, stock)
+    time.sleep(3)
     connect_paper_trading(driver)
 
 # Endpoint for sign in
@@ -122,8 +131,8 @@ def instantiate_endpoint(stocks: list):
 class StockActionRequest(BaseModel):
     stocks: List[str]
 # Endpoint for buying stocks
-@app.post("/buy_stock/")
-def buy_stock_endpoint(stock_action: StockActionRequest):
+@app.get("/buy_stock/")
+def buy_stock_endpoint(stock_action: Optional[str] = Query(None)):
     stocks_in_db = find_all_stocks()
     if len(stocks_in_db) < 5:
         print('We are inside the if block')
@@ -135,44 +144,52 @@ def buy_stock_endpoint(stock_action: StockActionRequest):
             signin(driver)  # Ensure user is signed in before taking action
             #retrieve all the stocks present in the database
             stocks_in_db = find_all_stocks()
+            print('The stocks in db are',stocks_in_db)
             db_stocks = []
-            for db_stock in stocks_in_db:
-                db_stocks.append(db_stock['_id'])
-            print('We are safe up till here and stocks are',stocks_in_db)
             instantiate(driver, 'TSLA')  # Ensure market is instantiated before buying 
-            for stock in list_of_stocks[1:]:
-                stock_info = stock
-                print('The stock infor is ',stock_info)
-                if stock['name'] not in db_stocks:
-                    print('The stock at 0 position is ',stock['name'])
-                    search_remaining(driver,stock['name'])
-                    # stock_info = stock_details(driver)
-                    capture_candlestick_chart(driver, "downloaded_candles")
-                    print('The stock information in new system is ',stock_info)
-                    res,summarized_news,sentiment_of_news= buy_stock(stock_info, stock['name'])
-                    print('The result in here is ',res)
-                    reason = res['Reason']
-                    recommendation = res['Recommendation']
-                    print('The recommendation is ',reason)
-                    price_int = int(float(stock['Price']))
-                    print('The price of the stock is ',price_int)
-                    if recommendation.lower() == 'buy' and price_int <=5:
-                        shares = res['Shares to Buy']
-                        stop_loss = res['Stop-Loss']
-                        profit_take = res['Profit Target']
-                        add_to_db(stock['name'],shares,stop_loss,profit_take)
-                        automate_buy(driver,shares,stop_loss,profit_take)
-                        return JSONResponse(content={
-                            "message": f"Buying stock {stock['name']}",
-                            "stock_info": stock_info,
-                            "buy_stock_response": res,
-                            "summarized_news": summarized_news,
-                            "sentiment_of_news": sentiment_of_news,
-                            "reason" : reason
-                        })
-                        break
-                    else:
-                        print('We are not buying this stocks')
+            if len(stocks_in_db) == 0:
+                for db_stock in stocks_in_db:
+                    db_stocks.append(db_stock['_id'])
+                    print('We are safe up till here and stocks are',stocks_in_db)
+                    for stock in list_of_stocks[1:]:
+                        stock_info = stock
+                        print('The stock infor is ',stock_info)
+                        if stock['name'] not in db_stocks:
+                            print('The stock at 0 position is ',stock['name'])
+                            search_remaining(driver,stock['name'])
+                            # stock_info = stock_details(driver)
+                            capture_candlestick_chart(driver, "downloaded_candles")
+                            print('The stock information in new system is ',stock_info)
+                            res,summarized_news,sentiment_of_news= buy_stock(stock_info, stock['name'])
+                            print('The result in here is ',res)
+                            reason = res['Reason']
+                            recommendation = res['Recommendation']
+                            print('The recommendation is ',reason)
+                            price_int = int(float(stock['Price']))
+                            print('The price of the stock is ',price_int)
+                            if recommendation.lower() == 'buy' and price_int <=5:
+                                shares = res['Shares to Buy']
+                                stop_loss = res['Stop-Loss']
+                                profit_take = res['Take-Profit']
+                                add_to_db(stock['name'],shares,stop_loss,profit_take)
+                                automate_buy(driver,shares,stop_loss,profit_take)
+                                return JSONResponse(content={
+                                    "message": f"Buying stock {stock['name']}",
+                                    "stock_info": stock_info,
+                                    "buy_stock_response": res,
+                                    "summarized_news": summarized_news,
+                                    "sentiment_of_news": sentiment_of_news,
+                                    "reason" : reason
+                                })
+                                break
+                            else:
+                                return JSONResponse(
+                                    content={
+                                        "message" : "You already have stock in your Data Base. Analyze that first"
+                                    }
+                                )
+                                print('We are not buying this stocks')
+            #before quiting we should 
 
         except Exception as e:
             driver.quit()
@@ -181,19 +198,36 @@ def buy_stock_endpoint(stock_action: StockActionRequest):
             driver.quit()
     else:
         return {"message" : f"You already got {len(stocks_in_db)} stocks to play around"}
+    
+def clean_text(text):
+    clean_text = ''.join(c for c in text if ord(c) < 128)  
+    clean_text = re.sub(r'[^\d.]', '', clean_text)  
+    return clean_text
 
 # Endpoint for selling stocks
-@app.post("/sell_stock/")
-def sell_stock_endpoint():
+@app.get("/sell_stock/")
+def sell_stock_endpoint(stock_action: Optional[str] = Query(None)):
     driver = init_driver()
     try:
         signin(driver)  # Ensure user is signed in before taking action
         instantiate(driver,['NVDA'])  # Ensure market is instantiated before selling
-        while True:
-            stock = find_all_stocks()
-            
-            print('The stock retrieved is ',stock)
-            
+        while stop_analysis_flag.is_set():
+            uncleaned_stock = find_all_stocks()
+            print('The raw data from database is ', uncleaned_stock)
+            stock_name = uncleaned_stock[0]['_id']
+            print('The name of stock is ', stock_name)
+
+            # Check if cleaning is needed (if any value contains '��')
+            needs_cleaning = any(isinstance(v, str) and '��' in v for item in uncleaned_stock for v in item.values())
+            if needs_cleaning:
+                print('Need cleaning...')
+                stock = [{k: clean_text(v) if isinstance(v, str) else v for k, v in item.items()} for item in uncleaned_stock]
+            else:
+                print('We do need cleaning...')
+                stock = uncleaned_stock  # Use the data as is
+
+            print('Final cleaned stock:', stock)
+                        
             if not stock:
                 print("No stocks available for analysis.")
                 break  # No stocks left, exit loop
@@ -205,7 +239,7 @@ def sell_stock_endpoint():
                     "stop loss": float(stock['stop_loss']),
                     "profit take": float(stock['profit_take'])
                 }
-                stock_name = stock['_id']
+                print('The stock under analysis is ',stock_name)
                 current_shares = int(stock['number_of_shares'])
                 search_remaining(driver,stock_name)
                 
@@ -243,11 +277,13 @@ def sell_stock_endpoint():
                 else:
                     print(f"Holding {stock_name}. Shares remain: {current_shares}")
 
-            else:
+            elif int(stock['number_of_shares']) == 0:
                 # Stock has no shares left, delete it and exit loop
                 delete_from_db(stock['_id'])
                 print(f"Stock {stock['_id']} has no shares left. Removing from database.")
                 break  # Exit the loop since stock is gone
+            else:
+                print(f"The case seems suspiciou number of shares are {stock['number_of_shares']}")
 
     except Exception as e:
         driver.quit()
