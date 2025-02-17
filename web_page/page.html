@@ -127,6 +127,8 @@
         function handleSubmit(endpoint) {
             document.getElementById("message").innerText = "Processing...";
 
+            document.cookie = "analyzing=true; path=/";
+
             fetch(`http://localhost:8000/${endpoint}`, {
                 method: "GET",
             })
@@ -155,15 +157,35 @@
                 document.getElementById("message").innerText = "Error processing request.";
             });
         }
-
         function stopAnalyzing() {
             if (analyzing) {
-                document.getElementById("message").innerText = "Analysis stopped.";
-                analyzing = false;
+                // Make a request to the /stop endpoint
+                fetch('http://localhost:8000/stop', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.message === "Analysis stopped.") {
+                        document.getElementById("message").innerText = "Analysis stopped.";
+                        analyzing = false;
+                        
+                        // Store in cookie
+                        document.cookie = "analyzing=false; path=/";
+                    } else {
+                        document.getElementById("message").innerText = "No active analysis to stop.";
+                    }
+                })
+                .catch(error => {
+                    console.error("Error stopping analysis:", error);
+                    document.getElementById("message").innerText = "Failed to stop analysis.";
+                });
             } else {
                 document.getElementById("message").innerText = "No active analysis to stop.";
             }
-        }
+        }        
     </script>
 </body>
 </html>

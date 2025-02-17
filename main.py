@@ -21,7 +21,7 @@ import os
 from dotenv import load_dotenv
 from db.db_operations import find_all_stocks,add_to_db,delete_from_db,get_current_shares
 import random
-from fastapi import FastAPI, Depends, Query
+from fastapi import FastAPI, Depends, Query, BackgroundTasks
 from typing import Optional
 import re
 import threading
@@ -36,6 +36,8 @@ load_dotenv()
 
 # Set up FastAPI app
 app = FastAPI()
+
+is_running = False
 
 # Allow all origins or set a specific origin
 app.add_middleware(
@@ -204,26 +206,27 @@ def clean_text(text):
     clean_text = re.sub(r'[^\d.]', '', clean_text)  
     return clean_text
 
-# Endpoint for selling stocks
-@app.get("/sell_stock/")
-def sell_stock_endpoint(stock_action: Optional[str] = Query(None)):
-    driver = init_driver()
+
+def sell_stock_task():
+    global is_running
+    driver = init_driver()  # Initialize the web driver
     try:
         signin(driver)  # Ensure user is signed in before taking action
-        instantiate(driver,['NVDA'])  # Ensure market is instantiated before selling
-        while stop_analysis_flag.is_set():
+        instantiate(driver, ['NVDA'])  # Ensure market is instantiated before selling
+        
+        while is_running:
             uncleaned_stock = find_all_stocks()
             print('The raw data from database is ', uncleaned_stock)
             stock_name = uncleaned_stock[0]['_id']
             print('The name of stock is ', stock_name)
 
-            # Check if cleaning is needed (if any value contains '��')
+            # Check if cleaning is needed
             needs_cleaning = any(isinstance(v, str) and '��' in v for item in uncleaned_stock for v in item.values())
             if needs_cleaning:
                 print('Need cleaning...')
                 stock = [{k: clean_text(v) if isinstance(v, str) else v for k, v in item.items()} for item in uncleaned_stock]
             else:
-                print('We do need cleaning...')
+                print('No cleaning needed...')
                 stock = uncleaned_stock  # Use the data as is
 
             print('Final cleaned stock:', stock)
@@ -233,41 +236,39 @@ def sell_stock_endpoint(stock_action: Optional[str] = Query(None)):
                 break  # No stocks left, exit loop
             
             stock = stock[0]
-            if int(stock['number_of_shares']) < 10:  # Convert to integer if needed
+            if stock and int(stock['number_of_shares']) >= 1:
                 stock_info = {
-                    "number_of_shares": int(stock['number_of_shares']),  # Convert if necessary
+                    "number_of_shares": int(stock['number_of_shares']),
                     "stop loss": float(stock['stop_loss']),
                     "profit take": float(stock['profit_take'])
                 }
-                print('The stock under analysis is ',stock_name)
+                print('The stock under analysis is ', stock_name)
                 current_shares = int(stock['number_of_shares'])
-                search_remaining(driver,stock_name)
+                search_remaining(driver, stock_name)
                 
-                capture_candlestick_chart(driver,"downloaded_candles")
-                res,summarized_news,sentiment_of_news = sell_hold_stock(stock_info, stock_name)
+                capture_candlestick_chart(driver, "downloaded_candles")
+                res, summarized_news, sentiment_of_news = sell_hold_stock(stock_info, stock_name)
 
-                print('The response from the ai is ',res)
+                print('The response from the AI is ', res)
                 
-                recommendation = res.get("Recommendation", "").lower()  # Fix: Access dictionary correctly
+                recommendation = res.get("Recommendation", "").lower()
 
                 if recommendation == 'sell':
                     shares_to_sell = int(res['Shares to Sell'])
                     stop_loss = float(res['Stop-Loss'])
                     profit_take = float(res['Take-Profit'])
                     
-                    # Update shares after selling
                     new_shares = max(0, current_shares - shares_to_sell)
                     add_to_db(stock_name, new_shares, stop_loss, profit_take)
                     
                     automate_sell(driver, shares_to_sell, stop_loss, profit_take)
                     print(f"Selling {shares_to_sell} shares of {stock_name}. Remaining: {new_shares}")
 
-                elif recommendation == 'buy':
+                elif recommendation == 'buy' and int(stock['number_of_shares']) < 10:
                     shares_to_buy = int(res['Shares to Buy'])
                     stop_loss = float(res['Stop-Loss'])
                     profit_take = float(res['Take-Profit'])
 
-                    # Update shares after buying
                     new_shares = current_shares + shares_to_buy
                     add_to_db(stock_name, new_shares, stop_loss, profit_take)
                     
@@ -278,18 +279,133 @@ def sell_stock_endpoint(stock_action: Optional[str] = Query(None)):
                     print(f"Holding {stock_name}. Shares remain: {current_shares}")
 
             elif int(stock['number_of_shares']) == 0:
-                # Stock has no shares left, delete it and exit loop
                 delete_from_db(stock['_id'])
                 print(f"Stock {stock['_id']} has no shares left. Removing from database.")
-                break  # Exit the loop since stock is gone
+                break
             else:
-                print(f"The case seems suspiciou number of shares are {stock['number_of_shares']}")
+                print(f"The case seems suspicious. Number of shares: {stock['number_of_shares']}")
+                break
 
     except Exception as e:
         driver.quit()
         raise HTTPException(status_code=500, detail=f"Error selling stock: {str(e)}")
     finally:
         driver.quit()
+
+@app.get("/sell_stock/")
+def sell_stock_endpoint(stock_action: str = Query(None)):
+    global is_running
+    print("is running :",is_running)
+    if not is_running:
+        is_running = True
+        thread = threading.Thread(target=sell_stock_task, daemon=True)
+        thread.start()
+        return {"message": "Started selling stock analysis in a separate thread."}
+    return {"message": "Analysis is already running."}
+
+@app.get("/stop")
+def stop_analysis():
+    global is_running
+    if is_running:
+        print('We entered into is_running condition ',is_running)
+        is_running = False  # This will stop the `sell_stock_task` loop
+        return {"message": "Analysis stopped."}
+    return {"message": "Analysis is not running."}
+
+
+# # Endpoint for selling stocks
+# @app.get("/sell_stock/")
+# def sell_stock_endpoint(stock_action: str = Query(None)):
+#     driver = init_driver()
+#     try:
+#         signin(driver)  # Ensure user is signed in before taking action
+#         instantiate(driver,['NVDA'])  # Ensure market is instantiated before selling
+#         while True:
+#             uncleaned_stock = find_all_stocks()
+#             print('The raw data from database is ', uncleaned_stock)
+#             stock_name = uncleaned_stock[0]['_id']
+#             print('The name of stock is ', stock_name)
+
+#             # Check if cleaning is needed (if any value contains '��')
+#             needs_cleaning = any(isinstance(v, str) and '��' in v for item in uncleaned_stock for v in item.values())
+#             if needs_cleaning:
+#                 print('Need cleaning...')
+#                 stock = [{k: clean_text(v) if isinstance(v, str) else v for k, v in item.items()} for item in uncleaned_stock]
+#             else:
+#                 print('We do need cleaning...')
+#                 stock = uncleaned_stock  # Use the data as is
+
+#             print('Final cleaned stock:', stock)
+                        
+#             if not stock:
+#                 print("No stocks available for analysis.")
+#                 break  # No stocks left, exit loop
+            
+#             stock = stock[0]
+#             if stock and int(stock['number_of_shares']) >= 1:  # Convert to integer if needed
+#                 stock_info = {
+#                     "number_of_shares": int(stock['number_of_shares']),  # Convert if necessary
+#                     "stop loss": float(stock['stop_loss']),
+#                     "profit take": float(stock['profit_take'])
+#                 }
+#                 print('The stock under analysis is ',stock_name)
+#                 current_shares = int(stock['number_of_shares'])
+#                 search_remaining(driver,stock_name)
+                
+#                 capture_candlestick_chart(driver,"downloaded_candles")
+#                 res,summarized_news,sentiment_of_news = sell_hold_stock(stock_info, stock_name)
+
+#                 print('The response from the ai is ',res)
+                
+#                 recommendation = res.get("Recommendation", "").lower()  # Fix: Access dictionary correctly
+
+#                 if recommendation == 'sell':
+#                     shares_to_sell = int(res['Shares to Sell'])
+#                     stop_loss = float(res['Stop-Loss'])
+#                     profit_take = float(res['Take-Profit'])
+                    
+#                     # Update shares after selling
+#                     new_shares = max(0, current_shares - shares_to_sell)
+#                     add_to_db(stock_name, new_shares, stop_loss, profit_take)
+                    
+#                     automate_sell(driver, shares_to_sell, stop_loss, profit_take)
+#                     print(f"Selling {shares_to_sell} shares of {stock_name}. Remaining: {new_shares}")
+
+#                 elif recommendation == 'buy' and int(stock['number_of_shares']) < 10:
+#                     shares_to_buy = int(res['Shares to Buy'])
+#                     stop_loss = float(res['Stop-Loss'])
+#                     profit_take = float(res['Take-Profit'])
+
+#                     # Update shares after buying
+#                     new_shares = current_shares + shares_to_buy
+#                     add_to_db(stock_name, new_shares, stop_loss, profit_take)
+                    
+#                     automate_buy(driver, shares_to_buy, stop_loss, profit_take)
+#                     print(f"Buying {shares_to_buy} shares of {stock_name}. Total: {new_shares}")
+
+#                 else:
+#                     print(f"Holding {stock_name}. Shares remain: {current_shares}")
+
+#             elif int(stock['number_of_shares']) == 0:
+#                 # Stock has no shares left, delete it and exit loop
+#                 delete_from_db(stock['_id'])
+#                 print(f"Stock {stock['_id']} has no shares left. Removing from database.")
+#                 break  # Exit the loop since stock is gone
+#             else:
+#                 print(f"The case seems suspiciou number of shares are {stock['number_of_shares']}")
+#                 break
+
+#     except Exception as e:
+#         driver.quit()
+#         raise HTTPException(status_code=500, detail=f"Error selling stock: {str(e)}")
+#     finally:
+#         driver.quit()
+        
+# @app.get("/stop")
+# def stop_analysis():
+#     global is_running
+#     is_running = False
+#     return {"message": "Analysis stopped"}
 
 # Run the app with `uvicorn`:
 # uvicorn app_name:app --reload
