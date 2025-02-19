@@ -42,14 +42,18 @@ is_running = False
 # Allow all origins or set a specific origin
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins, adjust for security
-    allow_credentials=True,
-    allow_methods=["*"],  # Allows all methods (GET, POST, OPTIONS, etc.)
-    allow_headers=["*"],  # Allows all headers
+    allow_origins=["http://192.168.18.42:5500"],  # Replace with your frontend URL
+    allow_credentials=True,  # ✅ Required to allow cookies
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 # Set your credentials
 email = os.getenv('EMAIL_ADDRESS')
 password = os.getenv('PASSWORD')
+
+def read_cookies(request: Request):
+    cookies = request.cookies  
+    return {"cookies": cookies}
 
 # Set up the Selenium WebDriver (initiating this once for each action)
 def init_driver():
@@ -103,10 +107,14 @@ def signin(driver):
     return signed_in
 
 # Function to instantiate market data and connect
-def instantiate(driver, stock):
+def instantiate(driver, stock, trade_option):
     search_market(driver, stock)
     time.sleep(3)
-    connect_paper_trading(driver)
+    if trade_option == 'paper_trading':
+        connect_paper_trading(driver)
+    else:
+        print('Please connect with your broker')
+        time.sleep(10)
 
 # Endpoint for sign in
 @app.post("/signin/")
@@ -134,64 +142,52 @@ class StockActionRequest(BaseModel):
     stocks: List[str]
 # Endpoint for buying stocks
 @app.get("/buy_stock/")
-def buy_stock_endpoint(stock_action: Optional[str] = Query(None)):
+def buy_stock_endpoint(trade_option: Optional[str] = Query(None)):
+    print("Full Query Params:", trade_option)  # Debugging
+    print("Received Trade Option:", trade_option if trade_option else "None")
+    
     stocks_in_db = find_all_stocks()
-    if len(stocks_in_db) < 5:
+    if len(stocks_in_db) == 0:
         print('We are inside the if block')
         list_of_stocks = extract_stock_data(WARRIOR_TRADING_URL)
         list_of_stocks_to_buy = []
-        print(stock_action)
         driver = init_driver()
         try:
             signin(driver)  # Ensure user is signed in before taking action
-            #retrieve all the stocks present in the database
-            stocks_in_db = find_all_stocks()
-            print('The stocks in db are',stocks_in_db)
             db_stocks = []
-            instantiate(driver, 'TSLA')  # Ensure market is instantiated before buying 
-            if len(stocks_in_db) == 0:
-                for db_stock in stocks_in_db:
-                    db_stocks.append(db_stock['_id'])
-                    print('We are safe up till here and stocks are',stocks_in_db)
-                    for stock in list_of_stocks[1:]:
-                        stock_info = stock
-                        print('The stock infor is ',stock_info)
-                        if stock['name'] not in db_stocks:
-                            print('The stock at 0 position is ',stock['name'])
-                            search_remaining(driver,stock['name'])
-                            # stock_info = stock_details(driver)
-                            capture_candlestick_chart(driver, "downloaded_candles")
-                            print('The stock information in new system is ',stock_info)
-                            res,summarized_news,sentiment_of_news= buy_stock(stock_info, stock['name'])
-                            print('The result in here is ',res)
-                            reason = res['Reason']
-                            recommendation = res['Recommendation']
-                            print('The recommendation is ',reason)
-                            price_int = int(float(stock['Price']))
-                            print('The price of the stock is ',price_int)
-                            if recommendation.lower() == 'buy' and price_int <=5:
-                                shares = res['Shares to Buy']
-                                stop_loss = res['Stop-Loss']
-                                profit_take = res['Take-Profit']
-                                add_to_db(stock['name'],shares,stop_loss,profit_take)
-                                automate_buy(driver,shares,stop_loss,profit_take)
-                                return JSONResponse(content={
-                                    "message": f"Buying stock {stock['name']}",
-                                    "stock_info": stock_info,
-                                    "buy_stock_response": res,
-                                    "summarized_news": summarized_news,
-                                    "sentiment_of_news": sentiment_of_news,
-                                    "reason" : reason
-                                })
-                                break
-                            else:
-                                return JSONResponse(
-                                    content={
-                                        "message" : "You already have stock in your Data Base. Analyze that first"
-                                    }
-                                )
-                                print('We are not buying this stocks')
-            #before quiting we should 
+            instantiate(driver, 'TSLA', trade_option)  # Ensure market is instantiated before buying 
+            print('We are inside the if condition of stocks_in_db')
+            for stock in list_of_stocks[1:]:
+                stock_info = stock
+                print('The stock infor is ',stock_info)
+                search_remaining(driver,stock['name'])
+                # stock_info = stock_details(driver)
+                capture_candlestick_chart(driver, "downloaded_candles")
+                print('The stock information in new system is ',stock_info)
+                res,summarized_news,sentiment_of_news= buy_stock(stock_info, stock['name'])
+                print('The result in here is ',res)
+                reason = res['Reason']
+                recommendation = res['Recommendation']
+                print('The recommendation is ',reason)
+                price_int = int(float(stock['Price']))
+                print('The price of the stock is ',price_int)
+                if recommendation.lower() == 'buy' and price_int <=5:
+                    shares = res['Shares to Buy']
+                    stop_loss = res['Stop-Loss']
+                    profit_take = res['Take-Profit']
+                    add_to_db(stock['name'],shares,stop_loss,profit_take)
+                    automate_buy(driver,shares,stop_loss,profit_take)
+                    return JSONResponse(content={
+                        "message": f"Buying stock {stock['name']}",
+                        "stock_info": stock_info,
+                        "buy_stock_response": res,
+                        "summarized_news": summarized_news,
+                        "sentiment_of_news": sentiment_of_news,
+                        "reason" : reason
+                    })
+                    break
+                else:
+                    print('We are not buying this stock at this moment')
 
         except Exception as e:
             driver.quit()
@@ -207,12 +203,13 @@ def clean_text(text):
     return clean_text
 
 
-def sell_stock_task():
+def sell_stock_task(trade_option):
+    print('The trade option in sell stock_task is ',trade_option)
     global is_running
     driver = init_driver()  # Initialize the web driver
     try:
         signin(driver)  # Ensure user is signed in before taking action
-        instantiate(driver, ['NVDA'])  # Ensure market is instantiated before selling
+        instantiate(driver, ['NVDA'],trade_option)  # Ensure market is instantiated before selling
         
         while is_running:
             uncleaned_stock = find_all_stocks()
@@ -255,8 +252,8 @@ def sell_stock_task():
 
                 if recommendation == 'sell':
                     shares_to_sell = int(res['Shares to Sell'])
-                    stop_loss = float(res['Stop-Loss'])
-                    profit_take = float(res['Take-Profit'])
+                    stop_loss = float(res['Stop-Loss'].replace('$','').strip())
+                    profit_take = float(res['Take-Profit'].replace('$','').strip())
                     
                     new_shares = max(0, current_shares - shares_to_sell)
                     add_to_db(stock_name, new_shares, stop_loss, profit_take)
@@ -292,13 +289,17 @@ def sell_stock_task():
     finally:
         driver.quit()
 
+
 @app.get("/sell_stock/")
-def sell_stock_endpoint(stock_action: str = Query(None)):
+def sell_stock_endpoint(request: Request, trade_option: str = Query(None)):
+    print("Full Query Params:", request.query_params)  # Debugging
+    print("Received Trade Option:", trade_option if trade_option else "None")
+    
     global is_running
     print("is running :",is_running)
     if not is_running:
         is_running = True
-        thread = threading.Thread(target=sell_stock_task, daemon=True)
+        thread = threading.Thread(target=sell_stock_task,args=(trade_option,), daemon=True)
         thread.start()
         return {"message": "Started selling stock analysis in a separate thread."}
     return {"message": "Analysis is already running."}
@@ -311,101 +312,3 @@ def stop_analysis():
         is_running = False  # This will stop the `sell_stock_task` loop
         return {"message": "Analysis stopped."}
     return {"message": "Analysis is not running."}
-
-
-# # Endpoint for selling stocks
-# @app.get("/sell_stock/")
-# def sell_stock_endpoint(stock_action: str = Query(None)):
-#     driver = init_driver()
-#     try:
-#         signin(driver)  # Ensure user is signed in before taking action
-#         instantiate(driver,['NVDA'])  # Ensure market is instantiated before selling
-#         while True:
-#             uncleaned_stock = find_all_stocks()
-#             print('The raw data from database is ', uncleaned_stock)
-#             stock_name = uncleaned_stock[0]['_id']
-#             print('The name of stock is ', stock_name)
-
-#             # Check if cleaning is needed (if any value contains '��')
-#             needs_cleaning = any(isinstance(v, str) and '��' in v for item in uncleaned_stock for v in item.values())
-#             if needs_cleaning:
-#                 print('Need cleaning...')
-#                 stock = [{k: clean_text(v) if isinstance(v, str) else v for k, v in item.items()} for item in uncleaned_stock]
-#             else:
-#                 print('We do need cleaning...')
-#                 stock = uncleaned_stock  # Use the data as is
-
-#             print('Final cleaned stock:', stock)
-                        
-#             if not stock:
-#                 print("No stocks available for analysis.")
-#                 break  # No stocks left, exit loop
-            
-#             stock = stock[0]
-#             if stock and int(stock['number_of_shares']) >= 1:  # Convert to integer if needed
-#                 stock_info = {
-#                     "number_of_shares": int(stock['number_of_shares']),  # Convert if necessary
-#                     "stop loss": float(stock['stop_loss']),
-#                     "profit take": float(stock['profit_take'])
-#                 }
-#                 print('The stock under analysis is ',stock_name)
-#                 current_shares = int(stock['number_of_shares'])
-#                 search_remaining(driver,stock_name)
-                
-#                 capture_candlestick_chart(driver,"downloaded_candles")
-#                 res,summarized_news,sentiment_of_news = sell_hold_stock(stock_info, stock_name)
-
-#                 print('The response from the ai is ',res)
-                
-#                 recommendation = res.get("Recommendation", "").lower()  # Fix: Access dictionary correctly
-
-#                 if recommendation == 'sell':
-#                     shares_to_sell = int(res['Shares to Sell'])
-#                     stop_loss = float(res['Stop-Loss'])
-#                     profit_take = float(res['Take-Profit'])
-                    
-#                     # Update shares after selling
-#                     new_shares = max(0, current_shares - shares_to_sell)
-#                     add_to_db(stock_name, new_shares, stop_loss, profit_take)
-                    
-#                     automate_sell(driver, shares_to_sell, stop_loss, profit_take)
-#                     print(f"Selling {shares_to_sell} shares of {stock_name}. Remaining: {new_shares}")
-
-#                 elif recommendation == 'buy' and int(stock['number_of_shares']) < 10:
-#                     shares_to_buy = int(res['Shares to Buy'])
-#                     stop_loss = float(res['Stop-Loss'])
-#                     profit_take = float(res['Take-Profit'])
-
-#                     # Update shares after buying
-#                     new_shares = current_shares + shares_to_buy
-#                     add_to_db(stock_name, new_shares, stop_loss, profit_take)
-                    
-#                     automate_buy(driver, shares_to_buy, stop_loss, profit_take)
-#                     print(f"Buying {shares_to_buy} shares of {stock_name}. Total: {new_shares}")
-
-#                 else:
-#                     print(f"Holding {stock_name}. Shares remain: {current_shares}")
-
-#             elif int(stock['number_of_shares']) == 0:
-#                 # Stock has no shares left, delete it and exit loop
-#                 delete_from_db(stock['_id'])
-#                 print(f"Stock {stock['_id']} has no shares left. Removing from database.")
-#                 break  # Exit the loop since stock is gone
-#             else:
-#                 print(f"The case seems suspiciou number of shares are {stock['number_of_shares']}")
-#                 break
-
-#     except Exception as e:
-#         driver.quit()
-#         raise HTTPException(status_code=500, detail=f"Error selling stock: {str(e)}")
-#     finally:
-#         driver.quit()
-        
-# @app.get("/stop")
-# def stop_analysis():
-#     global is_running
-#     is_running = False
-#     return {"message": "Analysis stopped"}
-
-# Run the app with `uvicorn`:
-# uvicorn app_name:app --reload

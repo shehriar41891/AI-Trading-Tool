@@ -116,51 +116,36 @@
 
     <script>
         let analyzing = false;
-
-        function setTradeOption() {
+    
+        function getTradeOption() {
             const tradeOption = document.querySelector('input[name="trade_option"]:checked');
-            if (tradeOption) {
-                document.cookie = `trade_option=${tradeOption.value}; path=/`;
-            }
+            return tradeOption ? tradeOption.value : '';
         }
-
+    
         function handleSubmit(endpoint) {
             document.getElementById("message").innerText = "Processing...";
-
+        
             document.cookie = "analyzing=true; path=/";
-
-            fetch(`http://localhost:8000/${endpoint}`, {
-                method: "GET",
-            })
+        
+            const tradeOption = document.querySelector('input[name="trade_option"]:checked')?.value || "paper_trading";
+        
+            const url = `http://localhost:8000/${endpoint}?trade_option=${tradeOption}`;
+            console.log("Request URL:", url); 
+        
+            fetch(url, { method: "GET" })
             .then(response => response.json())
             .then(data => {
                 document.getElementById("message").innerText = data.message || data.detail;
-                analyzing = true;
-
-                if (data.stock_info) {
-                    document.getElementById("stock_info").innerHTML = 
-                        `<h3>Stock Info</h3><pre>${JSON.stringify(data.stock_info, null, 2)}</pre>`;
-                }
-                
-                if (data.summarized_news && data.sentiment_of_news) {
-                    document.getElementById("news").innerHTML = 
-                        `<h3>News & Sentiment</h3><p><b>Summary:</b> ${data.summarized_news}</p>
-                         <p><b>Sentiment:</b> ${data.sentiment_of_news}</p>`;
-                }
-                
-                if (data.reason) {
-                    document.getElementById("reason").innerHTML = 
-                        `<h3>Reason</h3><p>${data.reason}</p>`;
-                }
             })
             .catch(() => {
                 document.getElementById("message").innerText = "Error processing request.";
             });
         }
+        
         function stopAnalyzing() {
             if (analyzing) {
-                // Make a request to the /stop endpoint
-                fetch('http://localhost:8000/stop', {
+                const tradeOption = getTradeOption();
+                fetch(`http://localhost:8000/stop?trade_option=${tradeOption}`, {
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json',
@@ -171,9 +156,6 @@
                     if (data.message === "Analysis stopped.") {
                         document.getElementById("message").innerText = "Analysis stopped.";
                         analyzing = false;
-                        
-                        // Store in cookie
-                        document.cookie = "analyzing=false; path=/";
                     } else {
                         document.getElementById("message").innerText = "No active analysis to stop.";
                     }
@@ -185,7 +167,7 @@
             } else {
                 document.getElementById("message").innerText = "No active analysis to stop.";
             }
-        }        
-    </script>
+        }
+    </script>    
 </body>
 </html>
