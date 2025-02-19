@@ -16,7 +16,7 @@ llm = OpenAI()
 prompt = PromptTemplate.from_template(
     """
     You are a professional stock trading analyst. Analyze the given candlestick chart data, stock details, 
-    and news sentiment to determine whether the stock is a **BUY** or **NOT BUY**. 
+    and news sentiment to determine whether the stock is a **BUY, SELL, or HOLD**. 
 
     **Analysis Criteria:**
     
@@ -34,20 +34,22 @@ prompt = PromptTemplate.from_template(
 
     4. **News Sentiment**  
        - Consider only **positive catalysts** (strong earnings, industry growth, new contracts, etc.).  
-       - If the stock has **negative news**, mark it as **NOT BUY**.  
+       - If the stock has **negative news**, mark it as **SELL**.  
 
     5. **Position Sizing**  
-       - If **BUY**, recommend **≤ 5 shares** only.  
-       - If **NOT BUY**, provide reasoning based on technicals or fundamentals.  
+       - If **BUY**, recommend **≤ 3 shares** (only in the best-case scenario).  
+       - If **SELL**, recommend **≤ 4 shares** (only in the worst-case scenario).  
+       - If **HOLD**, provide reasoning based on technicals or fundamentals.  
 
     **Structured Recommendation Format (JSON Only):**
     
     {{
-        "Recommendation": "<BUY | NOT BUY>",
+        "Recommendation": "<BUY | SELL | HOLD>",
         "Entry Price": "<Estimated optimal entry price if BUY>",
-        "Stop-Loss": "<Recommended stop-loss price if BUY>",
-        "Take-Profit": "<Expected price level to take profit if BUY>",
-        "Shares to Buy": "<Number of shares to buy (≤ 5) if BUY>",
+        "Stop-Loss": "<Recommended stop-loss price if BUY or SELL>",
+        "Take-Profit": "<Expected price level to take profit if BUY or SELL>",
+        "Shares to Buy": "<Number of shares to buy (≤ 3) if BUY>",
+        "Shares to Sell": "<Number of shares to sell (≤ 4) if SELL>",
         "Reason": "<Brief reason for decision>"
     }}
 

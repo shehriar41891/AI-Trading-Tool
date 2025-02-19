@@ -140,17 +140,18 @@ def connect_paper_trading(driver):
     except Exception as e:
         print(f"Error connecting to Paper Trading: {e}")
 
-def automate_sell(driver):
+def automate_sell(driver, shares_to_sell, stop_loss, profit_take):
     wait = WebDriverWait(driver, 10)
 
     # Click on the Sell button
     sell_button = wait.until(EC.element_to_be_clickable((By.XPATH, '//div[@data-name="sell-order-button"]')))
     sell_button.click()
 
-    # Enter the number of shares
-    quantity_input = wait.until(EC.presence_of_element_located((By.ID, 'quantity-field')))
+    # Select the Quantity Input Field and Enter the Number of Shares
+    quantity_input = wait.until(EC.element_to_be_clickable((By.ID, 'quantity-field')))  # Ensure it's clickable
+    quantity_input.click()  # Select the field before entering input
     quantity_input.clear()
-    quantity_input.send_keys("1")
+    quantity_input.send_keys(str(shares_to_sell))  # Input the correct number of shares
 
     # Click Take Profit checkbox
     take_profit_checkbox = wait.until(EC.element_to_be_clickable((By.XPATH, '//input[@data-name="order-ticket-profit-checkbox-bracket"]')))
@@ -276,6 +277,7 @@ def automate_buy(driver,shares,stop_loss,profit_take):
     # Set the quantity
     quantity_field = wait.until(EC.presence_of_element_located((By.ID, 'quantity-field')))
     quantity_field.clear()
+    time.sleep(30)
     quantity_field.send_keys(str(shares))
 
     # --- Handling "Take Profit" Checkbox ---
@@ -284,7 +286,7 @@ def automate_buy(driver,shares,stop_loss,profit_take):
         
         # Scroll into view
         driver.execute_script("arguments[0].scrollIntoView();", take_profit_checkbox)
-        time.sleep(1)  # Give time for UI update
+        time.sleep(1)  # Give time for UI update 
 
         # Try clicking parent element
         parent_label = take_profit_checkbox.find_element(By.XPATH, './..')
@@ -299,8 +301,14 @@ def automate_buy(driver,shares,stop_loss,profit_take):
         print('We are done uptil this points')
         
         take_profit_field = wait.until(EC.presence_of_element_located((By.ID, 'take-profit-price-field')))
-        take_profit_field.clear()
-        take_profit_field.send_keys(profit_take)
+        if take_profit_field:
+            print('The take profit button does exist')
+            take_profit_field.clear()
+            time.sleep(20)
+            take_profit_field.send_keys(profit_take)
+            time.sleep(20)
+        else:
+            print('the take profit button does not exist')
 
     except Exception as e:
         print(f"Error clicking Take Profit checkbox: {e}")
