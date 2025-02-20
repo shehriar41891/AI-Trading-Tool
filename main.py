@@ -15,7 +15,6 @@ import os
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
 from fastapi.responses import JSONResponse
-from win10toast import ToastNotifier
 from automation_selenium.get_stock_names import extract_stock_data
 import os 
 from dotenv import load_dotenv
@@ -24,6 +23,7 @@ import random
 from fastapi import FastAPI, Depends, Query, BackgroundTasks
 from typing import Optional
 import re
+import uvicorn
 import threading
 
 load_dotenv()
@@ -312,3 +312,7 @@ def stop_analysis():
         is_running = False  # This will stop the `sell_stock_task` loop
         return {"message": "Analysis stopped."}
     return {"message": "Analysis is not running."}
+
+
+if __name__ == "__main__":
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
