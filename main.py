@@ -25,6 +25,8 @@ from typing import Optional
 import re
 import uvicorn
 import threading
+from fastapi.responses import FileResponse
+from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv()
 
@@ -42,8 +44,8 @@ is_running = False
 # Allow all origins or set a specific origin
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://192.168.18.42:5500"],  # Replace with your frontend URL
-    allow_credentials=True,  # ✅ Required to allow cookies
+    allow_origins=["*"],  
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -115,6 +117,15 @@ def instantiate(driver, stock, trade_option):
     else:
         print('Please connect with your broker')
         time.sleep(10)
+        
+        
+HTML_FILE_PATH = "web_page/page.html"
+
+@app.get("/")
+def serve_homepage():
+    if os.path.exists(HTML_FILE_PATH):
+        return FileResponse(HTML_FILE_PATH)
+    return {"error": "index.html not found"}
 
 # Endpoint for sign in
 @app.post("/signin/")
