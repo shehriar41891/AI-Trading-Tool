@@ -1,64 +1,33 @@
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
 import time
-import os 
-from dotenv import load_dotenv
+from selenium import webdriver
+from selenium.webdriver.common.by import By
 
-load_dotenv()
+# Initialize WebDriver
+driver = webdriver.Chrome()
 
-WARRIOR_TRADING_URL = os.getenv('WARRIOR_TRADING_URL')
+# Open a webpage
+driver.get("https://www.tradingview.com/")
 
-def extract_stock_names(url):
-    options = Options()
-    options.add_argument("--headless")  # Run in headless mode (no UI)
-    options.add_argument("--disable-gpu")
-    options.add_argument("--window-size=1920,1080")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-    print("Opening browser in headless mode...")
-    driver.get(url)
+# JavaScript for a custom styled alert
+custom_alert_script = """
+var modal = document.createElement('div');
+modal.innerHTML = '<div id="customAlert" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 20px; background: white; box-shadow: 0 4px 8px rgba(0,0,0,0.2); text-align: center; font-size: 18px; border-radius: 10px; z-index: 10000;">' +
+                  '<p style="margin: 0; font-weight: bold;">⚠️ Please connect with your broker! ⚠️</p>' +
+                  '<button id="closeAlert" style="margin-top: 10px; padding: 8px 12px; border: none; background: #007BFF; color: white; cursor: pointer; border-radius: 5px;">OK</button>' +
+                  '</div>';
+document.body.appendChild(modal);
 
-    try:
-        # Wait for the page to load completely
-        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
+document.getElementById("closeAlert").onclick = function() {
+    document.body.removeChild(modal);
+};
+"""
 
-        # Click the button if needed
-        try:
-            button = WebDriverWait(driver, 5).until(
-                EC.element_to_be_clickable((By.XPATH, "//a[contains(text(), 'Scanner of the Most Active Stocks Today')]"))
-            )
-            button.click()
-        except Exception:
-            print("No button found or needed, continuing...")
+# Inject the styled alert
+driver.execute_script(custom_alert_script)
 
-        # Allow JavaScript to load data
-        time.sleep(3)  # Increase if necessary
+print("Styled alert displayed!")
 
-        # Wait for table rows to be fully visible
-        WebDriverWait(driver, 10).until(
-            EC.presence_of_all_elements_located((By.XPATH, "//div[contains(@class, 'grid-cols-9')]/div"))
-        )
+# Pause execution to see the alert
+time.sleep(5)
 
-        # Extract table data
-        stock_names = []
-        table_elements = driver.find_elements(By.XPATH, "//div[contains(@class, 'grid-cols-9')]/div")
-
-        # Extract stock names (Assuming first column contains stock names)
-        for i, div in enumerate(table_elements):
-            if i % 9 == 0:  # First element in each row contains the stock name (if the table has 9 columns per row)
-                stock_names.append(div.text.strip())
-
-    except Exception as e:
-        print(f"Error: {e}")
-        driver.quit()
-        return []
-
-    driver.quit()
-    return stock_names
+print("We executed the styled alert!")

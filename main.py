@@ -27,6 +27,7 @@ import uvicorn
 import threading
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from automation_selenium.alert import show_custom_alert,alert_candle,confirm_alert
 
 load_dotenv()
 
@@ -116,7 +117,8 @@ def instantiate(driver, stock, trade_option):
         connect_paper_trading(driver)
     else:
         print('Please connect with your broker')
-        time.sleep(10)
+        show_custom_alert(driver)
+        time.sleep(100)
         
         
 HTML_FILE_PATH = "web_page/page.html"
@@ -173,32 +175,38 @@ def buy_stock_endpoint(trade_option: Optional[str] = Query(None)):
                 print('The stock infor is ',stock_info)
                 search_remaining(driver,stock['name'])
                 # stock_info = stock_details(driver)
-                capture_candlestick_chart(driver, "downloaded_candles")
-                print('The stock information in new system is ',stock_info)
-                res,summarized_news,sentiment_of_news= buy_stock(stock_info, stock['name'])
-                print('The result in here is ',res)
-                reason = res['Reason']
-                recommendation = res['Recommendation']
-                print('The recommendation is ',reason)
-                price_int = int(float(stock['Price']))
-                print('The price of the stock is ',price_int)
-                if recommendation.lower() == 'buy' and price_int <=5:
-                    shares = res['Shares to Buy']
-                    stop_loss = res['Stop-Loss']
-                    profit_take = res['Take-Profit']
-                    add_to_db(stock['name'],shares,stop_loss,profit_take)
-                    automate_buy(driver,shares,stop_loss,profit_take)
-                    return JSONResponse(content={
-                        "message": f"Buying stock {stock['name']}",
-                        "stock_info": stock_info,
-                        "buy_stock_response": res,
-                        "summarized_news": summarized_news,
-                        "sentiment_of_news": sentiment_of_news,
-                        "reason" : reason
-                    })
-                    break
+                user_response = confirm_alert(driver)
+                if user_response:
+                    print('Users wants adjustment in candlestick charts')
+                    time.sleep(10)
                 else:
-                    print('We are not buying this stock at this moment')
+                    time.sleep(10)
+                    capture_candlestick_chart(driver, "downloaded_candles")
+                    print('The stock information in new system is ',stock_info)
+                    res,summarized_news,sentiment_of_news= buy_stock(stock_info, stock['name'])
+                    print('The result in here is ',res)
+                    reason = res['Reason']
+                    recommendation = res['Recommendation']
+                    print('The recommendation is ',reason)
+                    price_int = int(float(stock['Price']))
+                    print('The price of the stock is ',price_int)
+                    if recommendation.lower() == 'buy' and price_int <=5:
+                        shares = res['Shares to Buy']
+                        stop_loss = res['Stop-Loss']
+                        profit_take = res['Take-Profit']
+                        add_to_db(stock['name'],shares,stop_loss,profit_take)
+                        automate_buy(driver,shares,stop_loss,profit_take)
+                        return JSONResponse(content={
+                            "message": f"Buying stock {stock['name']}",
+                            "stock_info": stock_info,
+                            "buy_stock_response": res,
+                            "summarized_news": summarized_news,
+                            "sentiment_of_news": sentiment_of_news,
+                            "reason" : reason
+                        })
+                        break
+                    else:
+                        print('We are not buying this stock at this moment')
 
         except Exception as e:
             driver.quit()

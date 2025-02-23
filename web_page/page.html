@@ -129,7 +129,7 @@
         
             const tradeOption = document.querySelector('input[name="trade_option"]:checked')?.value || "paper_trading";
         
-            const url = `http://65.0.71.54:8000/${endpoint}?trade_option=${tradeOption}`;
+            const url = `http://localhost:8000/${endpoint}?trade_option=${tradeOption}`;
             console.log("Request URL:", url); 
         
             fetch(url, { method: "GET" })
